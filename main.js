@@ -199,10 +199,6 @@ const makeLine = window => {
 	// Handle Identity Label:
 	identityLabelRetracter( window );
 
-	require("sdk/simple-prefs").on("", function onPrefChange(prefName) {
-		console.log('preference '+prefName+' changed to '+ sp.prefs[prefName]);
-	});
-
 	const updateLayoutNonFlexible = focusedPref => {
 		const buttonWidth = backForward.boxObject.width / 2;
 		let buttons = 0;

@@ -34,15 +34,6 @@
 		margin-left:0px;
 	}
 
-	/* Absolute minimum urlbar container where you can still write: */
-	/*
-	#urlbar-container {
-		min-width:5.5em;
-	}
-	.tabbrowser-tabs {
-	  min-width: 30em !important;
-	}
-	*/
 	.tabbrowser-tab:not([pinned]) {
 		width:auto !important;
 	}

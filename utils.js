@@ -7,6 +7,9 @@ const events		= require('sdk/dom/events'),
 	  {partial, curry, compose} = require('sdk/lang/functional'),
 	  {isNull, isUndefined, isFunction}	= require('sdk/lang/type');
 
+const noop = () => {};
+exports.noop = noop;
+
 const isWindow = window => !isUndefined( window.window ) && !isUndefined( window.window.window );
 
 const domWindow = element => isWindow( element ) ? element : element.ownerDocument.defaultView;
@@ -76,27 +79,31 @@ const change = (window, obj, prop, val) => {
 }
 exports.change = change;
 
-const on = (element, type, listener, capture = false) => {
-	events.on( element, type, listener, capture );
+const undoListener = (element, type, listener, capture ) => {
 	const undoListen = () => events.removeListener( element, type, listener, capture );
 	const undoUnload = partial( unloader.register, undoListen, domWindow( element ) );
 	return () => {
 		undoListen();
 		undoUnload();
 	}
+}
+
+const on = (element, type, listener, capture = false) => {
+	events.on( element, type, listener, capture );
+	return undoListener( element, type, listener, capture );
 }
 exports.on = on;
 
 const once = (element, type, listener, capture = false) => {
 	events.once( element, type, listener, capture );
-	const undoListen = () => events.removeListener( element, type, listener, capture );
-	const undoUnload = partial( unloader.register, undoListen, domWindow( element ) );
-	return () => {
-		undoListen();
-		undoUnload();
-	}
+	return undoListener( element, type, listener, capture );
 }
 exports.once = once;
+
+const onMulti = (element, types, listener, capture = false) => {
+	return types.map( type => on( element, type, listener ) );
+}
+exports.onMulti = onMulti;
 
 /**
  * Apply a callback to each open and new browser windows.

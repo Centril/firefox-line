@@ -1,12 +1,53 @@
 {
-  "title": "Line",
-  "name": "firefox-line",
-  "version": "0.0.1",
-  "description": "Fork of Mozilla Labs Prospector Oneliner 2",
-  "main": "main.js",
-  "author": "Mazdak Farrokhzad",
-  "engines": {
-    "firefox": ">=38.0a1"
-  },
-  "license": "MPL"
+	"title": "Line",
+	"name": "firefox-line",
+	"version": "0.0.1",
+	"description": "Fork of Mozilla Labs Prospector Oneliner 2",
+	"main": "main.js",
+	"author": "Mazdak Farrokhzad",
+	"engines": {
+		"firefox": ">=38.0a1"
+	},
+	"preferences": [
+	{
+		"name": "urlbarMode",
+		"title": "Url-bar behaviour.",
+		"description": "Behaviour of the url-bar when focused or not. Fixed: Fixed size, Sliding: Grows when focused, Flexible: Uses space not claimed by tabs",
+		"type": "radio",
+		"value": "sliding",
+		"options": [{
+			"value": "fixed",
+			"label": "Fixed"
+		},
+		{
+			"value": "sliding",
+			"label": "Sliding"
+		},
+		{
+			"value": "flexible",
+			"label": "Flexible"
+		}]
+	},
+	{
+		"name": "urlbarBlur",
+		"title": "Url-bar width, blurred",
+		"description": "The width of the url-bar in pixels when it is not focused. Does not apply in Flexible mode.",
+		"type": "integer",
+		"value": 400
+	},
+	{
+		"name": "urlbarFocused",
+		"title": "Url-bar width, focused",
+		"description": "The width of the url-bar in pixels when it is focused, i.e: when you are entering an address. Only applies in Sliding mode.",
+		"type": "integer",
+		"value": 800
+	},
+	{
+		"name": "retractIdentityLabel",
+		"title": "Retract identity label?",
+		"description": "Whether or not to retract/slide back the identify label (for example the green label you see on secure connections).",
+		"type": "bool",
+		"value": true
+	}],
+	"license": "MPL"
 }

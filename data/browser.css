@@ -42,10 +42,10 @@
 	.tabbrowser-tabs {
 	  min-width: 30em !important;
 	}
-	.tabbrowser-tab:not([pinned]) {
-		min-width: 40px !important;
-	}
 	*/
+	.tabbrowser-tab:not([pinned]) {
+		width:auto !important;
+	}
 }
 
 @-moz-document url-prefix("chrome://browser/content/browser.xul") {

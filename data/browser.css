@@ -1,0 +1,111 @@
+@-moz-document url-prefix("chrome://browser/content/browser.xul") {
+	#back-button, #forward-button {
+		height:30px;
+	}
+	#urlbar {
+		height:31px;
+	}
+
+	.tabbrowser-arrowscrollbox {
+		min-width:0px !important;
+	}
+
+	#unified-back-forward-button {
+		-moz-transition-property: margin-right;
+		-moz-transition-duration: 100ms;
+		-moz-transition-timing-function: ease-out;
+	}
+
+	#urlbar-container {
+		-moz-transition-property: width;
+		-moz-transition-duration: 100ms;
+		-moz-transition-timing-function: ease-out;
+	}
+
+	#identity-icon-labels {
+		overflow: hidden;
+		-moz-transition-property: width, max-width;
+		-moz-transition-duration: 100ms;
+		-moz-transition-timing-function: ease-in-out;
+	}
+
+	/* Reduce space between caption buttons and menu button: */
+	.titlebar-placeholder[type="caption-buttons"] {
+		margin-left:0px;
+	}
+
+	/* Absolute minimum urlbar container where you can still write: */
+	/*
+	#urlbar-container {
+		min-width:5.5em;
+	}
+	.tabbrowser-tabs {
+	  min-width: 30em !important;
+	}
+	.tabbrowser-tab:not([pinned]) {
+		min-width: 40px !important;
+	}
+	*/
+}
+
+@-moz-document url-prefix("chrome://browser/content/browser.xul") {
+	@media (max-width: 700px) {
+		#urlbar-container {
+			min-width: 45ch !important;
+		}
+		#identity-box {
+			padding-right: 5px !important;
+			padding-left: 0px !important;
+		}
+		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
+		#urlbar-reload-button,
+		#action-button--firefox-line-searchbutton {
+			display:none !important;
+		}
+	}
+	@media (max-width: 600px) {
+		#urlbar-container {
+			min-width: 40ch !important;
+		}
+		#identity-box {
+			padding-right: 5px !important;
+			padding-left: 0px !important;
+		}
+		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
+		#urlbar-reload-button,
+		#back-button, #forward-button,
+		#action-button--firefox-line-searchbutton {
+			display:none !important;
+		}
+	}
+	@media (max-width: 500px) {
+		#urlbar-container {
+			min-width: 35ch !important;
+		}
+		#identity-box {
+			padding-right: 5px !important;
+			padding-left: 0px !important;
+		}
+		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
+		#urlbar-reload-button,
+		#back-button, #forward-button, #tabbrowser-tabs,
+		#action-button--firefox-line-searchbutton {
+			display:none !important;
+		}
+	}
+	@media (max-width: 400px) {
+		#urlbar-container {
+			min-width: 20ch !important;
+		}
+		#identity-box {
+			padding-right: 5px !important;
+			padding-left: 0px !important;
+		}
+		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
+		#identity-icon-labels, #urlbar-reload-button,
+		#back-button, #forward-button, #new-tab-button, #tabbrowser-tabs,
+		#action-button--firefox-line-searchbutton {
+			display:none !important;
+		}
+	}
+}

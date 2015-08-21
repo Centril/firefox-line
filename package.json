@@ -1,0 +1,12 @@
+{
+  "title": "Line",
+  "name": "firefox-line",
+  "version": "0.0.1",
+  "description": "Fork of Mozilla Labs Prospector Oneliner 2",
+  "main": "main.js",
+  "author": "Mazdak Farrokhzad",
+  "engines": {
+    "firefox": ">=38.0a1"
+  },
+  "license": "MPL"
+}

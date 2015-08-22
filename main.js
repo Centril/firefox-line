@@ -89,12 +89,23 @@ const searchClick = (window, state) => {
 	} );
 }
 
-const makeSearchButton = window => ui.ActionButton( {
-	id:		'searchbutton',
-	label:	'Search',
-	icon:	{ '16':	'./search16.png' },
-	onClick: partial( searchClick, window )
-} );
+const getContrastYIQ = hc => {
+	const [r, g, b] = [0, 2, 4].map( p => parseInt( hc.substr( p, 2 ), 16 ) );
+	return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
+}
+
+const makeSearchButton = window => {
+	const titlebar = window.document.getElementById( 'titlebar' );
+	const bg = window.getComputedStyle( titlebar ).getPropertyValue( '--chrome-background-color' );
+	const light = getContrastYIQ( bg.substr( 1 ) ) ? '' : '_white';
+
+	return ui.ActionButton( {
+		id:		'searchbutton',
+		label:	'Search',
+		icon:	['16', '32', '64'].reduce( (l, s) => { l[s] = `./search${light}${s}.png`; return l; }, {} ),
+		onClick: partial( searchClick, window )
+	} )
+};
 
 // Identity Label Handler:
 const identityLabelRetracter = window => {
@@ -245,7 +256,6 @@ const makeLine = window => {
 		urlContainer.style.width = "";
 		urlContainer.style.maxWidth = "";
 	};
-
 
 	// Make a switch of all the modes and pick the current one:
 	let layoutUpdater;

@@ -65,9 +65,11 @@ Want to contribute? Great stuff! Please use the issue system that github provide
 
 ## Copyright & License
 
-Licensed under the **[MPL 1.1 License]**.
+Licensed under the **[GPL 2 License]**.
 Copyright 2015 Mazdak Farrokhzad for the modified parts.
 Copyright Mozilla foundation for the original addon.
+
+**Note:** The project is **NOT** licensed under MPL 1.1 or MPL 2, only GPL 2.
 
 ## Acknowledgements
 
@@ -77,7 +79,7 @@ This addon was based on **[Mozilla Labs: Prospector - Oneliner]** by [Mozilla La
 
 [Gittip]: http://img.shields.io/gittip/Centril.svg?style=flat
 [url: Gittip]: https://www.gittip.com/Centril/
-[License]: http://img.shields.io/badge/license-MPL_1.1-blue.svg?style=flat
+[License]: http://img.shields.io/badge/license-GPL_2-blue.svg?style=flat
 [url: License]: LICENSE.md
 [Semver]: http://img.shields.io/badge/semver-2.0.0-blue.svg?style=flat
 [url: Semver]: http://semver.org/spec/v2.0.0.html
@@ -92,7 +94,7 @@ This addon was based on **[Mozilla Labs: Prospector - Oneliner]** by [Mozilla La
 [&lt;twingoow@gmail.com&gt;]: mailto:twingoow@gmail.com
 
 [CHANGES.md]: CHANGES.md
-[MPL 1.1 License]: LICENSE.md
+[GPL 2 License]: LICENSE.md
 
 [Mozilla Labs]: https://mozillalabs.com/en-US/
 

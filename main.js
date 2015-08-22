@@ -107,6 +107,38 @@ const makeSearchButton = window => {
 	} )
 };
 
+// Handle the user preferences tabMinWidth & tabMaxWidth:s.
+const tabWidthHandler = (saved, window) => {
+	[['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
+		// Deatch current attached style modification if any.
+		const detach = () => {
+			if ( !nullOrUndefined( saved[e[1]] ) ) {
+				detachFrom( saved[e[1]], window );
+				saved[e[1]] = null;
+			}
+		};
+
+		// Detach on unload.
+		unloader( detach, window );
+
+		// Make, apply and add listener:
+		const handleWidth = () => {
+			detach();
+
+			const pref = sp.prefs[e[1]];
+			if ( pref !== 0 ) {
+				saved[e[1]] = new Style( { source: `.tabbrowser-tab:not([pinned]) {
+					${e[0]}-width:${pref}px !important;
+				}` } );
+
+				attachTo( saved[e[1]], window );
+			}
+		}
+		handleWidth();
+		sp.on( e[1], handleWidth );
+	} );
+}
+
 // Identity Label Handler:
 const identityLabelRetracter = window => {
 	// Get some resources:
@@ -183,6 +215,9 @@ const makeLine = window => {
 	// Apply browser.css:
 	saved.style = new Style( { uri: './browser.css' } );
 	attachTo( saved.style, window );
+
+	// Handle the user preferences tabMinWidth & tabMaxWidth:s.
+	tabWidthHandler( saved, window );
 
 	// create Search Button:
 	const searchButton = makeSearchButton( window );

@@ -43,6 +43,20 @@
 		"value": 800
 	},
 	{
+		"name": "tabMinWidth",
+		"title": "Tab min-width",
+		"description": "The min-width of <tab>s in pixels. Set to 0 to keep the default.",
+		"type": "integer",
+		"value": 0
+	},
+	{
+		"name": "tabMaxWidth",
+		"title": "Tab max-width",
+		"description": "The max-width of <tab>s in pixels. Set to 0 to keep the default.",
+		"type": "integer",
+		"value": 0
+	},
+	{
 		"name": "retractIdentityLabel",
 		"title": "Retract identity label?",
 		"description": "Whether or not to retract/slide back the identify label (for example the green label you see on secure connections).",

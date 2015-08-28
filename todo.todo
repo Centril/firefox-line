@@ -1,8 +1,7 @@
 Line, Firefox Addon:
   ✔ White search/magnifying-glass button (Firefox Dev) @done (15-08-22 19:05)
   ✔ Ability to set tab min/max width. @done (15-08-22 23:04)
-  ☐ Fix multiprocess watchWindows.
-  ☐ Move taskbar buttons into a panel to save space, or remove them entierly.
+  ✔ Fix multiprocess watchWindows. @done (15-08-28 23:28)
   ☐ Move urlbar to the right, swap place with tabs.
   ☐ Integrate with searchbar better, tall order!
     How? A few comments:

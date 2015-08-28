@@ -130,14 +130,14 @@ exports.onMulti = onMulti;
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
 const watchWindows = callback => {
-	// Wait for the window to finish loading before running the callback
-	const runOnLoad = window => once( window, 'load', () => callback( window ) );
-
+	// Change: Not running on load, no need.
 	// Add functionality to existing windows
-	getAllWindows().forEach( window => (window.document.readyState === "complete" ? callback : runOnLoad)( window ) );
+	getAllWindows().forEach( callback );
 
-	// Watch for new browser windows opening then wait for it to load
-	windows.on( 'open', window => runOnLoad( viewFor( window ) ) );
+	// Watch for new browser windows opening then wait for it to load:
+	const listener = window => callback( viewFor( window ) );
+	windows.on( 'open', listener );
+	unloader.register( () => windows.off( 'open', listener ) );
 }
 exports.watchWindows = watchWindows;
 

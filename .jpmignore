@@ -4,7 +4,3 @@
 # Ignore any zip or xpi files
 *.zip
 *.xpi
-
-
-# Temporary:
-oneliner/

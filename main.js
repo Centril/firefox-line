@@ -39,6 +39,11 @@ const {	nullOrUndefined, noop,
 		insertAfter, byId
 	  } = require('utils');
 
+const ID = {
+	search: 'search-container',
+	urlbar: 'urlbar-container',
+}
+
 const searchClick = (window, state) => {
 	const {document, gBrowser, gURLBar} = window;
 	// @TODO error here!
@@ -241,8 +246,7 @@ const makeLine = window => {
 	let backForward = id( "unified-back-forward-button" );
 
 	// Remove search bar from navBar:
-	CUI.removeWidgetFromArea( 'search-container' );
-	// add unloader...
+	CUI.removeWidgetFromArea( ID.search );
 
 	// Save order of elements in tabsBar to restore later:
 	saved.origTabs = Array.slice( tabsBar.childNodes );
@@ -276,12 +280,10 @@ const makeLine = window => {
 		style: {},
 	};
 
-	// Make navigation bar hidden:
-	saved.flex = urlContainer.getAttribute( "flex" );
-
 	// Handle Identity Label:
 	identityLabelRetracter( window );
 
+	// Functions for handling layout modes:
 	const updateLayoutNonFlexible = focusedPref => {
 		const buttonWidth = backForward.boxObject.width / 2;
 		let buttons = 0;
@@ -304,6 +306,7 @@ const makeLine = window => {
 		return partial( updateLayoutNonFlexible, focusedPref );
 	}
 
+	saved.flex = urlContainer.getAttribute( "flex" );
 	const modeFlexible = () => {
 		urlContainer.setAttribute( "flex", saved.flex );
 		urlContainer.style.position = "";
@@ -342,12 +345,25 @@ const makeLine = window => {
 
 	// Clean up various changes when the add-on unloads:
 	unloader( () => {
+		// Remove our style:
 		detachFrom( saved.style, window );
+
+		// Destroy search button added:
 		searchButton.destroy();
-		saved.origNav.forEach( node => navBar.appendChild( node ) );
+
+		// Restore search-bar if user hasn't manually moved it:
+		if ( CUI.getPlacementOfWidget( ID.search ) === null ) {
+			const urlbarPlacement = CUI.getPlacementOfWidget( ID.urlbar );
+			CUI.addWidgetToArea( ID.search, urlbarPlacement.area, urlbarPlacement.position + 1 );
+		}
+
+		// Reverse: tabsBar the nextSibling of navBar:
+		insertAfter( navBar, tabsBar );
+
+		// Move stuff back to tabsBar:
+		saved.origTabs.forEach( node => tabsBar.appendChild( node ) );
+
 		backForward.style.marginRight = "";
-		navBar.hidden = false;
-		navBar.appendChild( menuButton );
 		modeFlexible();
 	} );
 
@@ -375,7 +391,7 @@ const makeLine = window => {
 // Plugin entry point:
 const main = () => watchWindows( window => async( partial( makeLine, window ) ) );
 
-main();
+//main();
 
 // Clean up with unloaders when we're deactivating:
 require("sdk/system/unload").when( reason => unload() );

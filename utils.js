@@ -268,3 +268,13 @@ exports.setWidth = setWidth;
  */
 const insertAfter = (element, ref) => ref.parentNode.insertBefore( element, ref.nextSibling );
 exports.insertAfter = insertAfter;
+
+/**
+ * Curried shortcut for getElementById.
+ *
+ * @param  {Window}	 window   The Window DOM object.
+ * @param  {string}  id       The unique ID of the DOM Element.
+ * @return 					  The DOM element that has the unique ID.
+ */
+const byId = curry( (window, id) => window.document.getElementById( id ) );
+exports.byId = byId;

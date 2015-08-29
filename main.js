@@ -36,7 +36,7 @@ const {	nullOrUndefined, noop,
 		getAllWindows, watchWindows,
 		change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth,
-		insertAfter
+		insertAfter, byId
 	  } = require('utils');
 
 const searchClick = (window, state) => {
@@ -98,10 +98,10 @@ const getContrastYIQ = hc => {
 const SEARCH_BUTTON_ID = 'action-button--firefox-line-searchbutton';
 const makeSearchButton = window => {
 	// Check if we already have the button, if so, skip:
-	if ( window.document.getElementById( SEARCH_BUTTON_ID ) ) return;
+	if ( byId( window, SEARCH_BUTTON_ID ) ) return;
 
 	// Figure out if theme is light or not:
-	const titlebar = window.document.getElementById( 'titlebar' );
+	const titlebar = byId( window, 'titlebar' );
 	const bg = window.getComputedStyle( titlebar ).getPropertyValue( '--chrome-background-color' );
 	const light = getContrastYIQ( bg.substr( 1 ) ) ? '' : '_white';
 
@@ -149,8 +149,8 @@ const tabWidthHandler = (saved, window) => {
 // Identity Label Handler:
 const identityLabelRetracter = window => {
 	// Get some resources:
-	const windowModel = modelFor( window )
-	const label = window.document.getElementById( "identity-icon-labels" )
+	const windowModel = modelFor( window );
+	const label = byId( window, "identity-icon-labels" );
 	const labelWidth = setWidth( label );
 	let oldWidth;
 	let resizeOff = noop, updateOff = [];
@@ -198,7 +198,7 @@ const identityLabelRetracter = window => {
 // Impose a max-width constraint so we don't overflow!
 const imposeMaxWidth = (window, navBar, urlContainer) => {
 	const onResize = () => {
-		const tb = window.document.getElementById('tabbrowser-tabs');
+		const tb = byId( window, 'tabbrowser-tabs' );
 		const tbWidth = boundingWidth( tb );
 		const tbReduce = tbWidth < 100 ? tbWidth : 100;
 
@@ -218,7 +218,8 @@ const makeLine = window => {
 	const saved = {},
 		{document, gBrowser, gURLBar} = window,
 		unloader = unloaderBind( window ),
-		CUI = window.CustomizableUI;
+		CUI = window.CustomizableUI,
+		id = byId( window );
 
 	// Apply browser.css:
 	saved.style = new Style( { uri: './browser.css' } );
@@ -235,9 +236,9 @@ const makeLine = window => {
 		searchButtonChrome, commands, backCmd, forwardCmd] =
 		["nav-bar", 'nav-bar-customization-target', "TabsToolbar", "urlbar-container", "titlebar-placeholder-on-TabsToolbar-for-captions-buttons",
 		 SEARCH_BUTTON_ID, "mainCommandSet", "Browser:Back", "Browser:Forward"
-		].map( id => document.getElementById( id ) );
+		].map( id );
 
-	let backForward = document.getElementById( "unified-back-forward-button" );
+	let backForward = id( "unified-back-forward-button" );
 
 	// Remove search bar from navBar:
 	CUI.removeWidgetFromArea( 'search-container' );

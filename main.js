@@ -35,7 +35,8 @@ const {	nullOrUndefined, noop,
 		unload, unloader, unloaderBind,
 		getAllWindows, watchWindows,
 		change, on, once, onMulti,
-		px, boundingWidth, boundingWidthPx, setWidth
+		px, boundingWidth, boundingWidthPx, setWidth,
+		insertAfter
 	  } = require('utils');
 
 const searchClick = (window, state) => {
@@ -195,17 +196,17 @@ const identityLabelRetracter = window => {
 }
 
 // Impose a max-width constraint so we don't overflow!
-const imposeMaxWidth = (window, tabsBar, urlContainer) => {
+const imposeMaxWidth = (window, navBar, urlContainer) => {
 	const onResize = () => {
 		const tb = window.document.getElementById('tabbrowser-tabs');
 		const tbWidth = boundingWidth( tb );
 		const tbReduce = tbWidth < 100 ? tbWidth : 100;
 
-		let children = Array.from( tabsBar.childNodes );
+		let children = Array.from( navBar.childNodes );
 		arrayRemove( children, urlContainer );
 		arrayRemove( children, tb );
 
-		let width = children.reduce( (a, v) => a - boundingWidth( v ), boundingWidth( tabsBar ) );
+		let width = children.reduce( (a, v) => a - boundingWidth( v ), boundingWidth( navBar ) );
 		urlContainer.style.maxWidth = px( width - tbReduce );
 	};
 
@@ -216,7 +217,8 @@ const imposeMaxWidth = (window, tabsBar, urlContainer) => {
 const makeLine = window => {
 	const saved = {},
 		{document, gBrowser, gURLBar} = window,
-		unloader = unloaderBind( window );
+		unloader = unloaderBind( window ),
+		CUI = window.CustomizableUI;
 
 	// Apply browser.css:
 	saved.style = new Style( { uri: './browser.css' } );
@@ -229,42 +231,41 @@ const makeLine = window => {
 	const searchButton = makeSearchButton( window );
 
 	// Get aliases to various elements:
-	let [commands,
-		navBar, tabsBar,
-		backForward, urlContainer, reload, stop, menuButton, searchButtonChrome,
-		backCmd, forwardCmd,
-		titlebarPlaceholder] =
-		["mainCommandSet",
-		 "nav-bar", "TabsToolbar",
-		 "unified-back-forward-button", "urlbar-container", "reload-button", "stop-button",
-		 'PanelUI-menu-button', SEARCH_BUTTON_ID,
-		 "Browser:Back", "Browser:Forward",
-		 "titlebar-placeholder-on-TabsToolbar-for-captions-buttons"
+	const [navBar, navBarTarget, tabsBar, urlContainer, titlebarPlaceholder,
+		searchButtonChrome, commands, backCmd, forwardCmd] =
+		["nav-bar", 'nav-bar-customization-target', "TabsToolbar", "urlbar-container", "titlebar-placeholder-on-TabsToolbar-for-captions-buttons",
+		 SEARCH_BUTTON_ID, "mainCommandSet", "Browser:Back", "Browser:Forward"
 		].map( id => document.getElementById( id ) );
 
-	// Save the order of elements in the navigation bar to restore later:
-	saved.origNav = Array.slice( navBar.childNodes );
+	let backForward = document.getElementById( "unified-back-forward-button" );
 
-	// Move the navigation controls to the tabs bar:
-	const placeUrlbar = () => {
-		const navOrder = [backForward, urlContainer, reload, stop, searchButtonChrome];
-		if ( sp.prefs.urlbarRight ) {
-			navOrder.forEach( node => {
-				if ( !isNull( node ) )
-					tabsBar.insertBefore( node, titlebarPlaceholder );
-			} );
-		} else {
-			navOrder.reverse().forEach( node => {
-				if ( !isNull( node ) )
-					tabsBar.insertBefore( node, tabsBar.firstChild );
-			} );
-		}
+	// Remove search bar from navBar:
+	CUI.removeWidgetFromArea( 'search-container' );
+	// add unloader...
+
+	// Save order of elements in tabsBar to restore later:
+	saved.origTabs = Array.slice( tabsBar.childNodes );
+	const addOrder = saved.origTabs.slice( 0 );
+	const reverseAdd = addOrder.reverse();
+
+	// Move titlebar placeholder to navBar:
+	if ( !isNull( titlebarPlaceholder ) ) {
+		navBar.appendChild( titlebarPlaceholder );
+		addOrder.splice( addOrder.indexOf( titlebarPlaceholder ), 1 );
+	}
+
+	// Make tabsBar the nextSibling of navBar, not the reverse which is the case now:
+	insertAfter( tabsBar, navBar );
+
+	// Move tabsBar controls to navBar:
+	const placeTabControls = () => {
+		const notNullDo = (callback, node) => { if ( !isNull( node ) ) callback( node ) };
+		const stateF = [node => insertAfter( node, urlContainer ), node => navBarTarget.insertBefore( node, navBarTarget.firstChild )]
+			.map( f => partial( notNullDo, f ) );
+		reverseAdd.forEach( stateF[sp.prefs.urlbarRight ? 1 : 0] );
 	};
-	placeUrlbar();
-	sp.on( 'urlbarRight', placeUrlbar );
-
-	// Place menu button:
-	tabsBar.insertBefore( menuButton, titlebarPlaceholder );
+	placeTabControls();
+	sp.on( 'urlbarRight', placeTabControls );
 
 	// Create a dummy backForward object if we don't have the node:
 	backForward = backForward || {
@@ -275,7 +276,6 @@ const makeLine = window => {
 	};
 
 	// Make navigation bar hidden:
-	navBar.hidden = true;
 	saved.flex = urlContainer.getAttribute( "flex" );
 
 	// Handle Identity Label:
@@ -299,7 +299,7 @@ const makeLine = window => {
 
 	const modeNonFlexible = focusedPref => {
 		urlContainer.removeAttribute( "flex" );
-		imposeMaxWidth( window, tabsBar, urlContainer );
+		imposeMaxWidth( window, navBar, urlContainer );
 		return partial( updateLayoutNonFlexible, focusedPref );
 	}
 

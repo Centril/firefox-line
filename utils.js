@@ -259,3 +259,12 @@ exports.boundingWidthPx = boundingWidthPx;
  */
 const setWidth = curry( (element, width) => element.style.width = width );
 exports.setWidth = setWidth;
+
+/**
+ * Inserts a DOM Element after the given reference Element, or at the end if reference Element is null.
+ *
+ * @param  {ELement}       element    The element to insert.
+ * @param  {Element|null}  ref        The reference to insert element after.
+ */
+const insertAfter = (element, ref) => ref.parentNode.insertBefore( element, ref.nextSibling );
+exports.insertAfter = insertAfter;

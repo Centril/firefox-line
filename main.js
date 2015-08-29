@@ -372,20 +372,8 @@ const makeLine = window => {
 	} );
 }
 
-// Make sure fullscreen always shows the toolbar without animation:
-const fullscreenWithoutAnimation = () => {
-	const AUTOHIDE_PREF = "browser.fullscreen.autohide";
-	globalPrefs.set( AUTOHIDE_PREF, true );
-	unloader( () => globalPrefs.reset( AUTOHIDE_PREF ) );
-}
-
 // Plugin entry point:
-const main = () => {
-	watchWindows( window => async( partial( makeLine, window ) ) );
-
-	// Make sure fullscreen always shows the toolbar without animation:
-	fullscreenWithoutAnimation();
-}
+const main = () => watchWindows( window => async( partial( makeLine, window ) ) );
 
 main();
 

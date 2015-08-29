@@ -43,6 +43,13 @@
 		"value": 800
 	},
 	{
+		"name": "urlbarRight",
+		"title": "Url-bar to the right of tabs?",
+		"description": "Whether or not to place the url-bar to the right of tabs or to keep them at the left.",
+		"type": "bool",
+		"value": false
+	},
+	{
 		"name": "tabMinWidth",
 		"title": "Tab min-width",
 		"description": "The min-width of <tab>s in pixels. Set to 0 to keep the default.",

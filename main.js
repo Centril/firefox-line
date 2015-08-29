@@ -94,11 +94,17 @@ const getContrastYIQ = hc => {
 	return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
 }
 
+const SEARCH_BUTTON_ID = 'action-button--firefox-line-searchbutton';
 const makeSearchButton = window => {
+	// Check if we already have the button, if so, skip:
+	if ( window.document.getElementById( SEARCH_BUTTON_ID ) ) return;
+
+	// Figure out if theme is light or not:
 	const titlebar = window.document.getElementById( 'titlebar' );
 	const bg = window.getComputedStyle( titlebar ).getPropertyValue( '--chrome-background-color' );
 	const light = getContrastYIQ( bg.substr( 1 ) ) ? '' : '_white';
 
+	// Make button:
 	return ui.ActionButton( {
 		id:		'searchbutton',
 		label:	'Search',
@@ -225,13 +231,13 @@ const makeLine = window => {
 	// Get aliases to various elements:
 	let [commands,
 		navBar, tabsBar,
-		backForward, urlContainer, reload, stop, customize, searchButtonChrome,
+		backForward, urlContainer, reload, stop, menuButton, searchButtonChrome,
 		backCmd, forwardCmd,
 		titlebarPlaceholder] =
 		["mainCommandSet",
 		 "nav-bar", "TabsToolbar",
 		 "unified-back-forward-button", "urlbar-container", "reload-button", "stop-button",
-		 'PanelUI-menu-button', 'action-button--firefox-line-searchbutton',
+		 'PanelUI-menu-button', SEARCH_BUTTON_ID,
 		 "Browser:Back", "Browser:Forward",
 		 "titlebar-placeholder-on-TabsToolbar-for-captions-buttons"
 		].map( id => document.getElementById( id ) );
@@ -240,13 +246,25 @@ const makeLine = window => {
 	saved.origNav = Array.slice( navBar.childNodes );
 
 	// Move the navigation controls to the tabs bar:
-	const navOrder = [backForward, urlContainer, reload, stop, searchButtonChrome];
-	navOrder.reverse().forEach( node => {
-		if ( !isNull( node ) )
-			tabsBar.insertBefore( node, tabsBar.firstChild );
-	} );
+	const placeUrlbar = () => {
+		const navOrder = [backForward, urlContainer, reload, stop, searchButtonChrome];
+		if ( sp.prefs.urlbarRight ) {
+			navOrder.forEach( node => {
+				if ( !isNull( node ) )
+					tabsBar.insertBefore( node, titlebarPlaceholder );
+			} );
+		} else {
+			navOrder.reverse().forEach( node => {
+				if ( !isNull( node ) )
+					tabsBar.insertBefore( node, tabsBar.firstChild );
+			} );
+		}
+	};
+	placeUrlbar();
+	sp.on( 'urlbarRight', placeUrlbar );
 
-	tabsBar.insertBefore( customize, titlebarPlaceholder );
+	// Place menu button:
+	tabsBar.insertBefore( menuButton, titlebarPlaceholder );
 
 	// Create a dummy backForward object if we don't have the node:
 	backForward = backForward || {
@@ -328,7 +346,7 @@ const makeLine = window => {
 		saved.origNav.forEach( node => navBar.appendChild( node ) );
 		backForward.style.marginRight = "";
 		navBar.hidden = false;
-		navBar.appendChild( customize );
+		navBar.appendChild( menuButton );
 		modeFlexible();
 	} );
 

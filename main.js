@@ -40,8 +40,19 @@ const {	nullOrUndefined, noop,
 	  } = require('utils');
 
 const ID = {
-	search: 'search-container',
-	urlbar: 'urlbar-container',
+	search:			'search-container',
+	urlbar:			'urlbar-container',
+	navBar:			'nav-bar',
+	navBarTarget: 	'nav-bar-customization-target',
+	tabsBar:		'TabsToolbar',
+	tabs:			'tabbrowser-tabs',
+	titlebarPlaceholder: 'titlebar-placeholder-on-TabsToolbar-for-captions-buttons',
+	commands:		'mainCommandSet',
+	back: 			'Browser:Back',
+	forward:		'Browser:Forward',
+	backForward:	'unified-back-forward-button',
+
+	searchButton: 'action-button--firefox-line-searchbutton',
 }
 
 const searchClick = (window, state) => {
@@ -100,10 +111,9 @@ const getContrastYIQ = hc => {
 	return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
 }
 
-const SEARCH_BUTTON_ID = 'action-button--firefox-line-searchbutton';
 const makeSearchButton = window => {
 	// Check if we already have the button, if so, skip:
-	if ( byId( window, SEARCH_BUTTON_ID ) ) return;
+	if ( byId( window, ID.searchButton ) ) return;
 
 	// Figure out if theme is light or not:
 	const titlebar = byId( window, 'titlebar' );
@@ -203,7 +213,7 @@ const identityLabelRetracter = window => {
 // Impose a max-width constraint so we don't overflow!
 const imposeMaxWidth = (window, navBar, urlContainer) => {
 	const onResize = () => {
-		const tb = byId( window, 'tabbrowser-tabs' );
+		const tb = byId( window, ID.tabs );
 		const tbWidth = boundingWidth( tb );
 		const tbReduce = tbWidth < 100 ? tbWidth : 100;
 
@@ -237,13 +247,12 @@ const makeLine = window => {
 	const searchButton = makeSearchButton( window );
 
 	// Get aliases to various elements:
-	const [navBar, navBarTarget, tabsBar, urlContainer, titlebarPlaceholder,
-		searchButtonChrome, commands, backCmd, forwardCmd] =
-		["nav-bar", 'nav-bar-customization-target', "TabsToolbar", "urlbar-container", "titlebar-placeholder-on-TabsToolbar-for-captions-buttons",
-		 SEARCH_BUTTON_ID, "mainCommandSet", "Browser:Back", "Browser:Forward"
-		].map( id );
+	const [ navBar, navBarTarget, tabsBar, urlContainer, titlebarPlaceholder,
+			searchButtonChrome, commands, backCmd, forwardCmd] =
+		  [ ID.navBar, ID.navBarTarget, ID.tabsBar, ID.urlbar, ID.titlebarPlaceholder,
+			ID.searchButton, ID.commands, ID.back, ID.forward].map( id );
 
-	let backForward = id( "unified-back-forward-button" );
+	let backForward = id( ID.backForward );
 
 	// Remove search bar from navBar:
 	CUI.removeWidgetFromArea( ID.search );
@@ -391,7 +400,7 @@ const makeLine = window => {
 // Plugin entry point:
 const main = () => watchWindows( window => async( partial( makeLine, window ) ) );
 
-//main();
+main();
 
 // Clean up with unloaders when we're deactivating:
 require("sdk/system/unload").when( reason => unload() );

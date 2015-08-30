@@ -18,7 +18,7 @@
  */
 'use strict';
 
-// Load SDK:
+// Import SDK:
 const self						= require('sdk/self'),
 	  ui						= require('sdk/ui'),
 	  globalPrefs				= require('sdk/preferences/service'),
@@ -31,6 +31,7 @@ const self						= require('sdk/self'),
 	  {setTimeout: async}		= require('sdk/timers'),
 	  {attachTo, detachFrom}	= require('sdk/content/mod');
 
+// Import utils:
 const {	nullOrUndefined, noop,
 		unload, unloader, unloaderBind,
 		getAllWindows, watchWindows,
@@ -39,6 +40,7 @@ const {	nullOrUndefined, noop,
 		insertAfter, byId
 	  } = require('utils');
 
+// Define all IDs used in addon:
 const ID = {
 	search:			'search-container',
 	urlbar:			'urlbar-container',

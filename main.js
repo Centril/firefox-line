@@ -54,7 +54,10 @@ const ID = {
 	forward:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',
 
-	searchButton: 'action-button--firefox-line-searchbutton',
+	searchProviders: {
+		button:		'firefox-line-search-button',
+		view:		'firefox-line-search-view',
+	}
 }
 
 const searchClick = (window, state) => {
@@ -108,12 +111,61 @@ const searchClick = (window, state) => {
 	} );
 }
 
+/*
+const searchClick2 = (window, state) => {
+	const urlbar = byId( window, 'urlbar' );
+	const searchBar = byId( window, 'searchbar' );
+	const tb = searchBar._textbox;
+	const popup = tb.popup;
+
+	popup.openAutocompletePopup( urlbar, urlbar );
+	const copyUrlbar = () => tb.value = urlbar.value;
+	const unreg = on( urlbar, 'change', copyUrlbar );
+}
+*/
+
 const getContrastYIQ = hc => {
 	const [r, g, b] = [0, 2, 4].map( p => parseInt( hc.substr( p, 2 ), 16 ) );
 	return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
 }
 
 const makeSearchButton = window => {
+	const CUI = window.CustomizableUI;
+	const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+	const ids = ID.searchProviders;
+
+	CUI.createWidget( {
+		id: ids.button,
+		type: 'view',
+		viewId: ids.view,
+		defaultArea: CUI.AREA_NAVBAR,
+		label: 'Search',
+		tooltiptext: 'Search with providers.',
+		onBeforeCreated: document => {
+			const c = elem => document.createElement( elem );
+			const cxul = elem => document.createElementNS( nsXUL, elem );
+
+			const panel = cxul( 'panelview' );
+			panel.setAttribute( 'id', ids.view );
+ 			byId( window, 'PanelUI-multiView' ).appendChild( panel );
+
+			const iframe = c("iframe");
+			iframe.setAttribute("id", "aus-view-iframe");
+			iframe.setAttribute("type", "content");
+			iframe.setAttribute("src", "chrome://aus-view/content/player.html");
+ 
+ 			panel.appendChild( iframe );
+		},
+		onViewShowing: event => {
+			console.log( event );
+		},
+		onViewHiding: event => {
+			console.log( event );
+		}
+	} );
+
+	return;
+
 	// Check if we already have the button, if so, skip:
 	if ( byId( window, ID.searchButton ) ) return;
 

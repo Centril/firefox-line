@@ -54,9 +54,11 @@ const ID = {
 	forward:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',
 
+	stringBundles:	'stringbundleset',
 	searchProviders: {
 		button:		'firefox-line-search-button',
 		view:		'firefox-line-search-view',
+		strings:	'firefox-line-search-strings'
 	}
 }
 
@@ -111,29 +113,74 @@ const searchClick = (window, state) => {
 	} );
 }
 
-/*
-const searchClick2 = (window, state) => {
-	const urlbar = byId( window, 'urlbar' );
-	const searchBar = byId( window, 'searchbar' );
-	const tb = searchBar._textbox;
-	const popup = tb.popup;
-
-	popup.openAutocompletePopup( urlbar, urlbar );
-	const copyUrlbar = () => tb.value = urlbar.value;
-	const unreg = on( urlbar, 'change', copyUrlbar );
-}
-*/
-
 const getContrastYIQ = hc => {
 	const [r, g, b] = [0, 2, 4].map( p => parseInt( hc.substr( p, 2 ), 16 ) );
 	return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
 }
 
+const {enginesManager} = require( './search-engine.js' );
 const makeSearchButton = window => {
-	const CUI = window.CustomizableUI;
-	const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-	const ids = ID.searchProviders;
+	const	CUI = window.CustomizableUI,
+			ids = ID.searchProviders,
+			manager = enginesManager( window ),
+			nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
+			c = elem => window.document.createElement( elem ),
+			cxul = elem => window.document.createElementNS( nsXUL, elem );
 
+	const pu = window.Components.utils.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils;
+
+ 	// Create stringbundle to use later:
+ 	const sb = cxul( 'stringbundle' );
+ 	sb.setAttribute( 'src', 'chrome://browser/locale/search.properties' )
+ 	sb.setAttribute( 'id', ids.strings );
+ 	byId( window, ID.stringBundles ).appendChild( sb );
+
+	const panelView = document => {
+		// Construct our panelview:
+		const panel = cxul( 'panelview' );
+		panel.setAttribute( 'id', ids.view );
+	 	byId( window, 'tab-view-deck' ).appendChild( panel );
+
+		// Register our manager:
+		manager.register( () => {
+			// Update!
+			console.log( 'update! ' + ids.view );
+
+			const makeEngineButton = engine => {
+				console.log( engine );
+
+				const b = cxul( 'button' );
+				b.setAttribute( 'id', 'searchpanel-engine-one-off-item' + engine.name );
+				b.className = 'searchbar-engine-one-off-item';
+
+				const tooltip = sb.getFormattedString( 'searchtip', [engine.name] );
+				b.setAttribute( 'tooltiptext', tooltip );
+				b.setAttribute( 'label', engine.name );
+
+				b.setAttribute( 'image', pu.getImageURLForResolution( window, engine.iconURI.spec ) );
+				b.setAttribute( 'width', '59' );
+
+				panel.appendChild( b );
+			};
+
+			// Get our engines, separate current and the rest:
+			const	curr = manager.currentEngine,
+					others = [for (e of manager.engines) if ( e.identifier !== curr.identifier ) e];
+
+			// Place out the current one:
+			makeEngineButton( curr );
+
+			// Add a separator:
+			// @TODO
+
+			// Place out all the other engines.
+			others.forEach( makeEngineButton );
+		} );
+	};
+
+	panelView();
+
+ 	// Create the widget:
 	CUI.createWidget( {
 		id: ids.button,
 		type: 'view',
@@ -141,21 +188,6 @@ const makeSearchButton = window => {
 		defaultArea: CUI.AREA_NAVBAR,
 		label: 'Search',
 		tooltiptext: 'Search with providers.',
-		onBeforeCreated: document => {
-			const c = elem => document.createElement( elem );
-			const cxul = elem => document.createElementNS( nsXUL, elem );
-
-			const panel = cxul( 'panelview' );
-			panel.setAttribute( 'id', ids.view );
- 			byId( window, 'PanelUI-multiView' ).appendChild( panel );
-
-			const iframe = c("iframe");
-			iframe.setAttribute("id", "aus-view-iframe");
-			iframe.setAttribute("type", "content");
-			iframe.setAttribute("src", "chrome://aus-view/content/player.html");
- 
- 			panel.appendChild( iframe );
-		},
 		onViewShowing: event => {
 			console.log( event );
 		},

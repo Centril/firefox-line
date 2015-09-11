@@ -20,7 +20,7 @@
 
 // Import SDK:
 const self						= require('sdk/self'),
-	  ui						= require('sdk/ui'),
+//	  ui						= require('sdk/ui'),
 	  globalPrefs				= require('sdk/preferences/service'),
 	  sp						= require("sdk/simple-prefs"),
 	  {Style}					= require("sdk/stylesheet/style"),
@@ -37,7 +37,8 @@ const {	nullOrUndefined, noop,
 		getAllWindows, watchWindows,
 		change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth,
-		insertAfter, byId
+		insertAfter, byId,
+		attrs, removeChildren
 	  } = require('utils');
 
 // Define all IDs used in addon:
@@ -124,61 +125,134 @@ const makeSearchButton = window => {
 			ids = ID.searchProviders,
 			manager = enginesManager( window ),
 			nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
-			c = elem => window.document.createElement( elem ),
-			cxul = elem => window.document.createElementNS( nsXUL, elem );
+			xul = elem => window.document.createElementNS( nsXUL, elem );
 
 	const pu = window.Components.utils.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils;
 
  	// Create stringbundle to use later:
- 	const sb = cxul( 'stringbundle' );
- 	sb.setAttribute( 'src', 'chrome://browser/locale/search.properties' )
- 	sb.setAttribute( 'id', ids.strings );
+ 	const sb = attrs( xul( 'stringbundle' ), {
+ 		src: 'chrome://browser/locale/search.properties',
+ 		id: ids.strings,
+ 	} );
  	byId( window, ID.stringBundles ).appendChild( sb );
 
-	const panelView = document => {
+	const pv = (() => {
 		// Construct our panelview:
-		const panel = cxul( 'panelview' );
-		panel.setAttribute( 'id', ids.view );
+		const panel = attrs( xul( 'panelview' ), { id: ids.view } ),
+			engines = attrs( xul( 'description' ), { class: 'search-panel-one-offs' } ),
+				add = xul( 'hbox' );
+
+		[engines, add].forEach( elem => panel.appendChild( elem ) );
 	 	byId( window, 'tab-view-deck' ).appendChild( panel );
 
-		// Register our manager:
-		manager.register( () => {
-			// Update!
-			console.log( 'update! ' + ids.view );
+		return {panel, engines, add};
+	})();
 
-			const makeEngineButton = engine => {
-				console.log( engine );
+	const updater = () => {
+		// Update!
+		console.log( 'update! ' + ids.view );
 
-				const b = cxul( 'button' );
-				b.setAttribute( 'id', 'searchpanel-engine-one-off-item' + engine.name );
-				b.className = 'searchbar-engine-one-off-item';
+		removeChildren( pv.engines );
+		removeChildren( pv.add );
 
-				const tooltip = sb.getFormattedString( 'searchtip', [engine.name] );
-				b.setAttribute( 'tooltiptext', tooltip );
-				b.setAttribute( 'label', engine.name );
+		// Get our engines, separate current and the rest, place them out:
+		const curr = manager.currentEngine;
+		const engines = [for (e of manager.engines) if ( e.identifier !== curr.identifier ) e];
+		engines.unshift( curr );
 
-				b.setAttribute( 'image', pu.getImageURLForResolution( window, engine.iconURI.spec ) );
-				b.setAttribute( 'width', '59' );
+		const maxCol = engines.length % 3 === 0 ? 3 : engines.length >= 16 ? 4 : 2;
+		const makeEngineButton = (engine, i, all) => {
+			const s = [i === 0, (i + 1) % maxCol === 0,
+				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
+			const b = attrs( xul( 'button' ), {
+				id: 'searchpanel-engine-one-off-item-' + engine.name,
+				class: ['searchbar-engine-one-off-item']
+					.concat( ['current', 'last-of-row', 'last-row'].filter( (c, i) => s[i] ) )
+					.join( ' ' ),
+				flex: '1',
+				tooltiptext: sb.getFormattedString( 'searchtip', [engine.name] ),
+				label: engine.name,
+				image: pu.getImageURLForResolution( window, engine.iconURI.spec ),
+				width: "59"
+			} );
+			pv.engines.appendChild( b );
+		};
+		engines.forEach( makeEngineButton );
 
-				panel.appendChild( b );
-			};
+		// Place out "add":
+		const addEngineButton = engine => {
+			const b = attrs( xul( 'button' ), {
+				id: 'searchbar-add-engine-' + engine.name,
+				class: 'addengine-item',
+				uri: engine.uri,
+				tooltiptext: engine.uri,
+				label: sb.getFormattedString( "cmd_addFoundEngine", [engine.title] ),
+				title: engine.title,
+				image: pu.getImageURLForResolution( window, engine.icon ),
+				pack: "start",
+				crop: "end"
+			} );
+			pv.add.appendChild( b );
+		};
 
-			// Get our engines, separate current and the rest:
-			const	curr = manager.currentEngine,
-					others = [for (e of manager.engines) if ( e.identifier !== curr.identifier ) e];
+		const addEngines = window.gBrowser.selectedBrowser.engines;
+		if ( addEngines && addEngines.length > 0 )
+			addEngines.forEach( addEngineButton );
 
-			// Place out the current one:
-			makeEngineButton( curr );
+/*
+      // Clear any addengine menuitems, including addengine-item entries and
+      // the addengine-separator.  Work backward to avoid invalidating the
+      // indexes as items are removed.
+      var items = popup.childNodes;
+      for (var i = items.length - 1; i >= 0; i--) {
+        if (items[i].classList.contains("addengine-item") ||
+            items[i].classList.contains("addengine-separator"))
+          popup.removeChild(items[i]);
+      }
 
-			// Add a separator:
-			// @TODO
+      var addengines = gBrowser.selectedBrowser.engines;
+      if (addengines && addengines.length > 0) {
+        const kXULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
-			// Place out all the other engines.
-			others.forEach( makeEngineButton );
+        // Find the (first) separator in the remaining menu, or the first item
+        // if no separators are present.
+        var insertLocation = popup.firstChild;
+        while (insertLocation.nextSibling &&
+               insertLocation.localName != "menuseparator") {
+          insertLocation = insertLocation.nextSibling;
+        }
+        if (insertLocation.localName != "menuseparator")
+          insertLocation = popup.firstChild;
+
+        var separator = document.createElementNS(kXULNS, "menuseparator");
+        separator.setAttribute("class", "addengine-separator");
+        popup.insertBefore(separator, insertLocation);
+
+        // Insert the "add this engine" items.
+        for (var i = 0; i < addengines.length; i++) {
+          var menuitem = document.createElement("menuitem");
+          var engineInfo = addengines[i];
+          var labelStr =
+              this._stringBundle.getFormattedString("cmd_addFoundEngine",
+                                                    [engineInfo.title]);
+          menuitem = document.createElementNS(kXULNS, "menuitem");
+          menuitem.setAttribute("class", "menuitem-iconic addengine-item");
+          menuitem.setAttribute("label", labelStr);
+          menuitem.setAttribute("tooltiptext", engineInfo.uri);
+          menuitem.setAttribute("uri", engineInfo.uri);
+          if (engineInfo.icon)
+            this.setIcon(menuitem, engineInfo.icon);
+          menuitem.setAttribute("title", engineInfo.title);
+          popup.insertBefore(menuitem, insertLocation);
+        }
+*/
+
+		// Adjust width & height:
+		attrs( pv.engines, {
+			height: px( 33 * Math.ceil( engines.length / maxCol ) ),
+			width: px( 61 * maxCol )
 		} );
 	};
-
-	panelView();
 
  	// Create the widget:
 	CUI.createWidget( {
@@ -188,14 +262,16 @@ const makeSearchButton = window => {
 		defaultArea: CUI.AREA_NAVBAR,
 		label: 'Search',
 		tooltiptext: 'Search with providers.',
+		onBeforeCreate: document => manager.register( updater ), // Register our manager.
 		onViewShowing: event => {
 			console.log( event );
+			updater();
 		},
 		onViewHiding: event => {
 			console.log( event );
 		}
 	} );
-
+/*
 	return;
 
 	// Check if we already have the button, if so, skip:
@@ -213,6 +289,7 @@ const makeSearchButton = window => {
 		icon:	['16', '32', '64'].reduce( (l, s) => { l[s] = `./search${light}${s}.png`; return l; }, {} ),
 		onClick: partial( searchClick, window )
 	} )
+*/
 };
 
 // Handle the user preferences tabMinWidth & tabMaxWidth:s.

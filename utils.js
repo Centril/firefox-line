@@ -26,6 +26,17 @@ const events		= require('sdk/dom/events'),
 	  {isNull, isUndefined, isFunction}	= require('sdk/lang/type');
 
 /**
+ * If v is function, call it with rest of parameters,
+ * otherwise: use v.
+ *
+ * @param  {*|function}  v     A value, or a function.
+ * @param  {...*}        args  Any other arguments.
+ * @return {*}           v or v(...args).
+ */
+const voc = (v, ...args) => isFunction( v ) ? v( v, ...args ) : v;
+exports.voc = voc;
+
+/**
  * A function that takes nothing and does nothing.
  */
 const noop = () => {};
@@ -142,7 +153,7 @@ exports.unloaderBind = component => callback => unloader.register( callback, com
  */
 const change = (window, obj, prop, val) => {
 	let orig = obj[prop];
-	obj[prop] = isFunction( val ) ? val( orig ) : val;
+	obj[prop] = voc( val, orig );
 	unloader.register( () => obj[prop] = orig, window );
 }
 exports.change = change;
@@ -278,3 +289,28 @@ exports.insertAfter = insertAfter;
  */
 const byId = curry( (window, id) => window.document.getElementById( id ) );
 exports.byId = byId;
+
+/**
+ * For each of object {K, V} obj.method( K, V ).
+ * If V is a function, it will be replaced with call:
+ * V( k, obj ).
+ *
+ * @param  {string} method     Name of a function that exists on obj.
+ * @param  {Object} obj        An object to call method on.
+ * @param  {Object} props      An object to map each K, V pair, and do... see above.
+ */
+const methodKV = curry( (method, obj, props) => {
+	Object.keys( props ).forEach( k => obj[method]( k, voc( props[k], k, obj ) ) );
+	return obj;
+} );
+exports.methodKV = methodKV;
+
+exports.attrs = methodKV( 'setAttribute' );
+
+/**
+ * Removes all the children of elem.
+ *
+ * @param  {Element}  elem  The node to remove children of.
+ */
+const removeChildren = elem => { while ( elem.firstChild ) elem.firstChild.remove() };
+exports.removeChildren = removeChildren;

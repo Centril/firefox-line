@@ -16,6 +16,74 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+@-moz-document url-prefix("chrome://browser/content/browser.xul") {
+	#firefox-line-search-view {
+		padding-left:5px;
+	}
+
+	#firefox-line-search-view .search-panel-one-offs {
+		margin: 0px !important;
+		line-height: 0;
+	}
+
+	#firefox-line-search-view .searchbar-engine-one-off-item {
+		-moz-appearance: none;
+		display: inline-block !important;
+		border: medium none;
+		min-width: 48px;
+		height: 32px;
+		margin: 0px;
+		padding: 0px;
+		background: transparent url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAWCAYAAAABxvaqAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3gofECQNNVW2/AAAABBJREFUGFdjOHPmzH8GehEA/KpKg9YTf4AAAAAASUVORK5CYII=") no-repeat scroll right center;
+	}
+
+	#firefox-line-search-view .searchbar-engine-one-off-item:hover {
+		background-color: #39F;
+		background-image: none;
+	}
+
+	#firefox-line-search-view .searchbar-engine-one-off-item:not(.last-row) {
+		box-sizing: content-box;
+		border-bottom: 1px solid #CCC;
+	}
+
+	#firefox-line-search-view .searchbar-engine-one-off-item.last-of-row {
+		background-image: none;
+	}
+
+	#firefox-line-search-view .searchbar-engine-one-off-item > .button-box {
+		border: medium none;
+		padding: 0px;
+	}
+	#firefox-line-search-view .searchbar-engine-one-off-item > .button-box > .button-icon {
+		width: 16px;
+		height: 16px;
+	}
+	#firefox-line-search-view .searchbar-engine-one-off-item > .button-box > .button-text {
+		display: none;
+	}
+
+	#firefox-line-search-view .searchbar-engine-one-off-item.current {
+		border-bottom:none !important;
+		padding-bottom:1px;
+		box-shadow:0px -2px 0px rgb(51, 153, 255) inset, 0px 1px 0px rgb(51, 153, 255);
+	}
+
+	#firefox-line-search-view .addengine-item {
+		-moz-appearance: none;
+		border: medium none;
+		height: 32px;
+		margin: 0px;
+		padding: 0px 10px;
+	}
+
+	#firefox-line-search-view .addengine-item:first-of-type {
+		border-top: 1px solid #CCC;
+	}
+}
+
+
 @-moz-document url-prefix("chrome://browser/content/browser.xul") {
 	/* Start: Copied from #TabsToolbar*/
 	[devtoolstheme]:root #navigator-toolbox > toolbar#nav-bar:not(#TabsToolbar):not(#toolbar-menubar) {

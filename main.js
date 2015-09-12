@@ -45,6 +45,7 @@ const {	nullOrUndefined, noop,
 const ID = {
 	search:			'search-container',
 	urlbar:			'urlbar-container',
+	urlbarTB:		'urlbar',
 	navBar:			'nav-bar',
 	navBarTarget: 	'nav-bar-customization-target',
 	tabsBar:		'TabsToolbar',
@@ -173,8 +174,23 @@ const makeSearchButton = window => {
 				tooltiptext: sb.getFormattedString( 'searchtip', [engine.name] ),
 				label: engine.name,
 				image: pu.getImageURLForResolution( window, engine.iconURI.spec ),
-				width: "59"
+				width: "59",
+				"data-engine": engine.name
 			} );
+			on( b, 'command', event => {
+				// Handle clicks on an engine, get engine first:
+				const name = event.target.getAttribute( 'data-engine' );
+				const engine = manager.byName( name );
+
+				// Get urlbar value:
+				const val = byId( window, ID.urlbarTB ).value;
+
+				// Finally, make our search in the given tab.
+				// @TODO
+
+				console.log( "searching for: " + val );
+				console.log( engine );
+			}, true );
 			pv.engines.appendChild( b );
 		};
 		engines.forEach( makeEngineButton );

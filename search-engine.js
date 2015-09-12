@@ -127,6 +127,7 @@ const enginesManager = (window) => {
 			// Stop observing.
 			if ( registered ) obs.removeObserver( observer, OBSERVE_TOPIC );
 		},
+		byName: name => search.getEngineByName( name ),
 		get engines () { return _engines || (_engines = search.getVisibleEngines()) },
 		get currentEngine() { return search.currentEngine || { name: "", uri: null } },
 		set currentEngine( engine ) { return (search.defaultEngine = search.currentEngine = engine) }

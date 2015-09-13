@@ -122,6 +122,10 @@ const getContrastYIQ = hc => {
 
 const {enginesManager} = require( './search-engine.js' );
 const makeSearchButton = window => {
+	const clip = require( 'sdk/clipboard' );
+	const selection = require( 'sdk/selection' );
+	const trimIf = val => (val || "").trim();
+
 	const	CUI = window.CustomizableUI,
 			ids = ID.searchProviders,
 			manager = enginesManager( window ),
@@ -148,6 +152,34 @@ const makeSearchButton = window => {
 
 		return {panel, engines, add};
 	})();
+
+	const engineCommand = event => {
+		const {document, gBrowser, gURLBar} = window;
+		const browser = gBrowser.selectedBrowser;
+
+		// Handle clicks on an engine, get engine first:
+		const name = event.target.getAttribute( 'data-engine' );
+		const engine = manager.byName( name );
+
+		// Get urlbar value if any:
+		let val = byId( window, ID.urlbarTB ).value.trim();
+		if ( val.length === 0 ) {
+			// Get selected text if any:
+			val = trimIf( selection.text );
+
+			// Get clipboard text if any:
+			if ( val.length === 0 )
+				val =  trimIf( clip.get( 'text' ) );
+
+			// 
+		}
+
+		// Finally, make our search in the given tab.
+		// @TODO
+
+		console.log( "searching for: " + val );
+		console.log( engine );
+	};
 
 	const updater = () => {
 		// Update!
@@ -177,20 +209,7 @@ const makeSearchButton = window => {
 				width: "59",
 				"data-engine": engine.name
 			} );
-			on( b, 'command', event => {
-				// Handle clicks on an engine, get engine first:
-				const name = event.target.getAttribute( 'data-engine' );
-				const engine = manager.byName( name );
-
-				// Get urlbar value:
-				const val = byId( window, ID.urlbarTB ).value;
-
-				// Finally, make our search in the given tab.
-				// @TODO
-
-				console.log( "searching for: " + val );
-				console.log( engine );
-			}, true );
+			on( b, 'command', engineCommand, true );
 			pv.engines.appendChild( b );
 		};
 		engines.forEach( makeEngineButton );

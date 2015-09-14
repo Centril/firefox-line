@@ -57,19 +57,14 @@ const ID = {
 	searchProviders: {
 		button:		'firefox-line-search-button',
 		view:		'firefox-line-search-view',
-		attachTo:	'tab-view-deck'
+		attachTo:	'PanelUI-multiView'
 	}
-}
-
-const getContrastYIQ = hc => {
-	const [r, g, b] = [0, 2, 4].map( p => parseInt( hc.substr( p, 2 ), 16 ) );
-	return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
 }
 
 const clip = require( 'sdk/clipboard' );
 const tabs = require( 'sdk/tabs' );
 const {enginesManager} = require( './search-engine.js' );
-const makeSearchButton = window => {
+const setupSearchButton = window => {
 	const	{CustomizableUI: CUI, Components: { utils: cu }, Services: { strings }, document, whereToOpenLink, openUILinkIn} = window,
 			ids = ID.searchProviders,
 			manager = enginesManager( window ),
@@ -82,43 +77,58 @@ const makeSearchButton = window => {
 
 	// Construct our panelview:
 	const pv = {
-		panel: attrs( xul( 'panelview' ), { id: ids.view } ),
+		panel:	attrs( xul( 'panelview' ), { id: ids.view, flex: '1' } ),
+		body:	attrs( xul( 'vbox' ), { class: 'panel-subview-body' } ),
+		label:	attrs( xul( 'label' ), { class: 'panel-subview-header', value: 'Search with providers' } ),
 		engines: attrs( xul( 'description' ), { class: 'search-panel-one-offs' } ),
 		add: xul( 'hbox' )
 	};
-	[pv.engines, pv.add].forEach( elem => pv.panel.appendChild( elem ) );
+	[pv.label, pv.body].forEach( elem => pv.panel.appendChild( elem ) );
+	[pv.engines, pv.add].forEach( elem => pv.body.appendChild( elem ) );
 	byId( window, ids.attachTo ).appendChild( pv.panel );
 
 	const engineCommand = event => {
 		// Handle clicks on an engine, get engine first:
 		const engine = manager.byName( event.target.getAttribute( 'data-engine' ) );
 
+		const computeWhere = () => {
+			// Where should we open link?
+			const newTabPref = globalPrefs.get( 'browser.search.openintab', true );
+			if ( ( (event instanceof window.KeyboardEvent) && event.altKey) ^ newTabPref )
+				return "tab";
+			else if ( (event instanceof window.MouseEvent) && (event.button === 1 || event.ctrlKey) )
+				return "tab-background";
+			else
+				return whereToOpenLink( event, false, true );
+		};
+
+		const open = (data) => {
+			// Finally, make our search in the given tab.
+			const submission = engine.getSubmission( data, null, "searchbar" );
+			const where = computeWhere();
+			openUILinkIn( submission.uri.spec, where === "tab-background" ? "tab" : where, {
+				postData: submission.postData,
+				inBackground: where === "tab-background"
+			} );
+		};
+
 		// Get urlbar value if any:
 		let val = trimIf( ub.value );
 		if ( val.length === 0 ) {
 			// Get selected text if any:
-			val = trimIf( require( 'sdk/selection' ).text );
-			// Get clipboard text if any:
-			if ( val.length === 0 )
-				val = trimIf( clip.get( 'text' ) );
-		}
+			const worker = tabs.activeTab.attach( { contentScriptFile: self.data.url( 'selection.js' ) } );
+			worker.port.on( 'firefox-line-selection-received', response => {
+				worker.destroy();
 
-		// Where should we open link?
-		const newTabPref = globalPrefs.get( 'browser.search.openintab', true );
-		let where;
-		if ( ( (event instanceof window.KeyboardEvent) && event.altKey) ^ newTabPref )
-			where = "tab";
-		else if ( (event instanceof window.MouseEvent) && (event.button === 1 || event.ctrlKey) )
-			where = "tab-background";
-		else
-			where = whereToOpenLink( event, false, true );
+				let val = trimIf( response );
 
-		// Finally, make our search in the given tab.
-		const submission = engine.getSubmission( val, null, "searchbar" );
-		openUILinkIn( submission.uri.spec, where === "tab-background" ? "tab" : where, {
-			postData: submission.postData,
-			inBackground: where === "tab-background"
-		} ); 
+				// Get clipboard text if any:
+				if ( val.length === 0 ) val = trimIf( clip.get( 'text' ) );
+
+				open( val );
+			} );
+			worker.port.emit( 'firefox-line-selection-wanted', true );
+		} else open( val );
 	};
 
 	const updater = () => {
@@ -173,10 +183,16 @@ const makeSearchButton = window => {
 		*/
 
 		// Adjust width & height:
+		const width = px( 61 * maxCol );
+		const height = 33 * Math.ceil( engines.length / maxCol );
 		attrs( pv.engines, {
-			height: px( 33 * Math.ceil( engines.length / maxCol ) ),
-			width: px( 61 * maxCol )
+			height: px( height ),
+			width: width
 		} );
+		pv.engines.style.maxWidth = width;
+
+		// fix this for CUI PanelUI:
+		//pv.panel.style.height = px( height * 2 );
 	};
 
  	// Create the widget:
@@ -187,37 +203,22 @@ const makeSearchButton = window => {
 		defaultArea: CUI.AREA_NAVBAR,
 		label: 'Search',
 		tooltiptext: 'Search with providers.',
-		onBeforeCreate: document => manager.register( updater ), // Register our manager.
 		onViewShowing: event => {
-			console.log( event );
-			updater();
-		},
-		onViewHiding: event => {
-			console.log( event );
+			if ( manager.isRegistered ) updater();
+			else manager.register( updater )
 		}
 	} );
 
-//	chrome://browser/skin/search-indicator.png
+	// Make urlbar removable and move button to after urlbar:
+	const e = [ids.button, ID.urlbar].map( i => attrs( byId( window, i ), { removable: 'true' } ) );
+	insertAfter( e[0], e[1] );
 
-/*
-	return;
-
-	// Check if we already have the button, if so, skip:
-	if ( byId( window, ID.searchButton ) ) return;
-
-	// Figure out if theme is light or not:
-	const titlebar = byId( window, 'titlebar' );
-	const bg = window.getComputedStyle( titlebar ).getPropertyValue( '--chrome-background-color' );
-	const light = getContrastYIQ( bg.substr( 1 ) ) ? '' : '_white';
-
-	// Make button:
-	return ui.ActionButton( {
-		id:		'searchbutton',
-		label:	'Search',
-		icon:	['16', '32', '64'].reduce( (l, s) => { l[s] = `./search${light}${s}.png`; return l; }, {} ),
-		onClick: partial( searchClick, window )
-	} )
-*/
+	// Unloader: reverse removable, destroy the widget and the panel:
+	unloader( () => {
+		attrs( e[1], { removable: 'false' } );
+		CUI.destroyWidget( ids.button );
+		pv.panel.remove();
+	} );
 };
 
 // Handle the user preferences tabMinWidth & tabMaxWidth:s.
@@ -334,9 +335,6 @@ const makeLine = window => {
 	// Handle the user preferences tabMinWidth & tabMaxWidth:s.
 	tabWidthHandler( saved, window );
 
-	// create Search Button:
-	const searchButton = makeSearchButton( window );
-
 	// Get aliases to various elements:
 	const [ navBar, navBarTarget, tabsBar, urlContainer, titlebarPlaceholder,
 			searchButtonChrome, commands, backCmd, forwardCmd] =
@@ -443,13 +441,13 @@ const makeLine = window => {
 	// Make sure we set the right size of the urlbar on blur or focus:
 	onMulti( window.gURLBar, ['blur', 'focus'], updateLayout );
 
+	// Setup Search Button:
+	setupSearchButton( window );
+
 	// Clean up various changes when the add-on unloads:
 	unloader( () => {
 		// Remove our style:
 		detachFrom( saved.style, window );
-
-		// Destroy search button added:
-		searchButton.destroy();
 
 		// Restore search-bar if user hasn't manually moved it:
 		if ( CUI.getPlacementOfWidget( ID.search ) === null ) {

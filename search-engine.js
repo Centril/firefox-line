@@ -119,16 +119,22 @@ const enginesManager = (window) => {
 
 			// Make sure nsIBrowserSearchService is initialized:
 			search.init( status => {
-				if ( !(status & 0x80000000 === 0) ) updater( 'init') // isSuccessCode doesn't seem to work.
-				else reportError( 'Cannot initialize search service, bailing out: ' + status );
+				if ( !(status & 0x80000000 === 0) ) {
+					updater( 'init' ); // isSuccessCode doesn't seem to work.
+					registered = true;
+				} else reportError( 'Cannot initialize search service, bailing out: ' + status );
 			} );
 		},
 		unregister: () => {
 			// Stop observing.
-			if ( registered ) obs.removeObserver( observer, OBSERVE_TOPIC );
+			if ( registered ) {
+				obs.removeObserver( observer, OBSERVE_TOPIC );
+				registered = false;
+			}
 		},
 		byName: name => search.getEngineByName( name ),
-		get engines () { return _engines || (_engines = search.getVisibleEngines()) },
+		get isRegistered() { return registered; },
+		get engines() { return _engines || (_engines = search.getVisibleEngines()) },
 		get currentEngine() { return search.currentEngine || { name: "", uri: null } },
 		set currentEngine( engine ) { return (search.defaultEngine = search.currentEngine = engine) }
 	};

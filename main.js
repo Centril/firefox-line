@@ -20,7 +20,6 @@
 
 // Import SDK:
 const self						= require('sdk/self'),
-//	  ui						= require('sdk/ui'),
 	  globalPrefs				= require('sdk/preferences/service'),
 	  sp						= require("sdk/simple-prefs"),
 	  {Style}					= require("sdk/stylesheet/style"),
@@ -55,64 +54,11 @@ const ID = {
 	back: 			'Browser:Back',
 	forward:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',
-
-	stringBundles:	'stringbundleset',
 	searchProviders: {
 		button:		'firefox-line-search-button',
 		view:		'firefox-line-search-view',
-		strings:	'firefox-line-search-strings'
+		attachTo:	'tab-view-deck'
 	}
-}
-
-const searchClick = (window, state) => {
-	const {document, gBrowser, gURLBar} = window;
-	// @TODO error here!
-	let browser = gBrowser.selectedBrowser;
-
-	// See if we should copy over the value in the input when searching
-	let prefill = gURLBar.value.trim();
-	if ( prefill.search( /[:\/\.]/ ) !== -1 )
-		prefill = "";
-
-	// Check for a focused plain textbox
-	const {focusedElement} = document.commandDispatcher;
-	const {nodeName, type, value} = focusedElement || {};
-	if ( prefill === "" &&
-		 focusedElement !== gURLBar.inputField &&
-		 !nullOrUndefined( nodeName ) &&
-		 nodeName.search( /^(html:)?input$/i ) === 0 &&
-		 type.search( /^text$/i ) === 0 ) {
-		prefill = value.trim();
-	}
-
-	// Check the page for selected text
-	if ( prefill === "" )
-		prefill = browser.contentWindow.getSelection().toString().trim();
-
-	// Check the clipboard for text
-	if ( prefill === "")
-		prefill = (window.readFromClipboard() || "").trim();
-
-	// Make sure to not replace pinned tabs
-	if ( gBrowser.selectedTab.pinned ) {
-		const tab = gBrowser.addTab( "about:home" );
-		gBrowser.selectedTab = tab;
-		browser = tab.linkedBrowser;
-	}
-	// Replace the tab with search
-	else
-		browser.loadURI("about:home");
-
-	// Prepare about:home with a prefilled search once
-	browser.focus();
-	once( browser, "DOMContentLoaded", () => {
-		// Prefill then select it for easy typing over
-		const input = browser.contentDocument.getElementById( "searchText" );
-		input.value = prefill;
-		input.setSelectionRange( 0, prefill.length );
-		// Clear out the location bar so it shows the placeholder text
-		gURLBar.value = "";
-	} );
 }
 
 const getContrastYIQ = hc => {
@@ -120,81 +66,73 @@ const getContrastYIQ = hc => {
 	return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
 }
 
+const clip = require( 'sdk/clipboard' );
+const tabs = require( 'sdk/tabs' );
 const {enginesManager} = require( './search-engine.js' );
 const makeSearchButton = window => {
-	const clip = require( 'sdk/clipboard' );
-	const selection = require( 'sdk/selection' );
-	const trimIf = val => (val || "").trim();
-
-	const	CUI = window.CustomizableUI,
+	const	{CustomizableUI: CUI, Components: { utils: cu }, Services: { strings }, document, whereToOpenLink, openUILinkIn} = window,
 			ids = ID.searchProviders,
 			manager = enginesManager( window ),
 			nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
-			xul = elem => window.document.createElementNS( nsXUL, elem );
+			xul = elem => document.createElementNS( nsXUL, elem ),
+			trimIf = val => (val || "").trim(),
+			pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
+			sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
+			ub = byId( window, ID.urlbarTB );
 
-	const pu = window.Components.utils.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils;
-
- 	// Create stringbundle to use later:
- 	const sb = attrs( xul( 'stringbundle' ), {
- 		src: 'chrome://browser/locale/search.properties',
- 		id: ids.strings,
- 	} );
- 	byId( window, ID.stringBundles ).appendChild( sb );
-
-	const pv = (() => {
-		// Construct our panelview:
-		const panel = attrs( xul( 'panelview' ), { id: ids.view } ),
-			engines = attrs( xul( 'description' ), { class: 'search-panel-one-offs' } ),
-				add = xul( 'hbox' );
-
-		[engines, add].forEach( elem => panel.appendChild( elem ) );
-	 	byId( window, 'tab-view-deck' ).appendChild( panel );
-
-		return {panel, engines, add};
-	})();
+	// Construct our panelview:
+	const pv = {
+		panel: attrs( xul( 'panelview' ), { id: ids.view } ),
+		engines: attrs( xul( 'description' ), { class: 'search-panel-one-offs' } ),
+		add: xul( 'hbox' )
+	};
+	[pv.engines, pv.add].forEach( elem => pv.panel.appendChild( elem ) );
+	byId( window, ids.attachTo ).appendChild( pv.panel );
 
 	const engineCommand = event => {
-		const {document, gBrowser, gURLBar} = window;
-		const browser = gBrowser.selectedBrowser;
-
 		// Handle clicks on an engine, get engine first:
-		const name = event.target.getAttribute( 'data-engine' );
-		const engine = manager.byName( name );
+		const engine = manager.byName( event.target.getAttribute( 'data-engine' ) );
 
 		// Get urlbar value if any:
-		let val = byId( window, ID.urlbarTB ).value.trim();
+		let val = trimIf( ub.value );
 		if ( val.length === 0 ) {
 			// Get selected text if any:
-			val = trimIf( selection.text );
-
+			val = trimIf( require( 'sdk/selection' ).text );
 			// Get clipboard text if any:
 			if ( val.length === 0 )
-				val =  trimIf( clip.get( 'text' ) );
-
-			// 
+				val = trimIf( clip.get( 'text' ) );
 		}
 
-		// Finally, make our search in the given tab.
-		// @TODO
+		// Where should we open link?
+		const newTabPref = globalPrefs.get( 'browser.search.openintab', true );
+		let where;
+		if ( ( (event instanceof window.KeyboardEvent) && event.altKey) ^ newTabPref )
+			where = "tab";
+		else if ( (event instanceof window.MouseEvent) && (event.button === 1 || event.ctrlKey) )
+			where = "tab-background";
+		else
+			where = whereToOpenLink( event, false, true );
 
-		console.log( "searching for: " + val );
-		console.log( engine );
+		// Finally, make our search in the given tab.
+		const submission = engine.getSubmission( val, null, "searchbar" );
+		openUILinkIn( submission.uri.spec, where === "tab-background" ? "tab" : where, {
+			postData: submission.postData,
+			inBackground: where === "tab-background"
+		} ); 
 	};
 
 	const updater = () => {
-		// Update!
-		console.log( 'update! ' + ids.view );
-
 		removeChildren( pv.engines );
 		removeChildren( pv.add );
 
-		// Get our engines, separate current and the rest, place them out:
+		// Get our engines, separate current and the rest:
 		const curr = manager.currentEngine;
 		const engines = [for (e of manager.engines) if ( e.identifier !== curr.identifier ) e];
 		engines.unshift( curr );
 
+		// Place out engines:
 		const maxCol = engines.length % 3 === 0 ? 3 : engines.length >= 16 ? 4 : 2;
-		const makeEngineButton = (engine, i, all) => {
+		engines.forEach( (engine, i, all) => {
 			const s = [i === 0, (i + 1) % maxCol === 0,
 				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
 			const b = attrs( xul( 'button' ), {
@@ -203,7 +141,7 @@ const makeSearchButton = window => {
 					.concat( ['current', 'last-of-row', 'last-row'].filter( (c, i) => s[i] ) )
 					.join( ' ' ),
 				flex: '1',
-				tooltiptext: sb.getFormattedString( 'searchtip', [engine.name] ),
+				tooltiptext: sb.formatStringFromName( 'searchtip', [engine.name], 1 ),
 				label: engine.name,
 				image: pu.getImageURLForResolution( window, engine.iconURI.spec ),
 				width: "59",
@@ -211,17 +149,17 @@ const makeSearchButton = window => {
 			} );
 			on( b, 'command', engineCommand, true );
 			pv.engines.appendChild( b );
-		};
-		engines.forEach( makeEngineButton );
+		} );
 
 		// Place out "add":
+		/*
 		const addEngineButton = engine => {
 			const b = attrs( xul( 'button' ), {
 				id: 'searchbar-add-engine-' + engine.name,
 				class: 'addengine-item',
 				uri: engine.uri,
 				tooltiptext: engine.uri,
-				label: sb.getFormattedString( "cmd_addFoundEngine", [engine.title] ),
+				label: sb.formatStringFromName( "cmd_addFoundEngine", [engine.title], 1 ),
 				title: engine.title,
 				image: pu.getImageURLForResolution( window, engine.icon ),
 				pack: "start",
@@ -229,58 +167,10 @@ const makeSearchButton = window => {
 			} );
 			pv.add.appendChild( b );
 		};
-
 		const addEngines = window.gBrowser.selectedBrowser.engines;
 		if ( addEngines && addEngines.length > 0 )
 			addEngines.forEach( addEngineButton );
-
-/*
-      // Clear any addengine menuitems, including addengine-item entries and
-      // the addengine-separator.  Work backward to avoid invalidating the
-      // indexes as items are removed.
-      var items = popup.childNodes;
-      for (var i = items.length - 1; i >= 0; i--) {
-        if (items[i].classList.contains("addengine-item") ||
-            items[i].classList.contains("addengine-separator"))
-          popup.removeChild(items[i]);
-      }
-
-      var addengines = gBrowser.selectedBrowser.engines;
-      if (addengines && addengines.length > 0) {
-        const kXULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-
-        // Find the (first) separator in the remaining menu, or the first item
-        // if no separators are present.
-        var insertLocation = popup.firstChild;
-        while (insertLocation.nextSibling &&
-               insertLocation.localName != "menuseparator") {
-          insertLocation = insertLocation.nextSibling;
-        }
-        if (insertLocation.localName != "menuseparator")
-          insertLocation = popup.firstChild;
-
-        var separator = document.createElementNS(kXULNS, "menuseparator");
-        separator.setAttribute("class", "addengine-separator");
-        popup.insertBefore(separator, insertLocation);
-
-        // Insert the "add this engine" items.
-        for (var i = 0; i < addengines.length; i++) {
-          var menuitem = document.createElement("menuitem");
-          var engineInfo = addengines[i];
-          var labelStr =
-              this._stringBundle.getFormattedString("cmd_addFoundEngine",
-                                                    [engineInfo.title]);
-          menuitem = document.createElementNS(kXULNS, "menuitem");
-          menuitem.setAttribute("class", "menuitem-iconic addengine-item");
-          menuitem.setAttribute("label", labelStr);
-          menuitem.setAttribute("tooltiptext", engineInfo.uri);
-          menuitem.setAttribute("uri", engineInfo.uri);
-          if (engineInfo.icon)
-            this.setIcon(menuitem, engineInfo.icon);
-          menuitem.setAttribute("title", engineInfo.title);
-          popup.insertBefore(menuitem, insertLocation);
-        }
-*/
+		*/
 
 		// Adjust width & height:
 		attrs( pv.engines, {
@@ -306,6 +196,9 @@ const makeSearchButton = window => {
 			console.log( event );
 		}
 	} );
+
+//	chrome://browser/skin/search-indicator.png
+
 /*
 	return;
 

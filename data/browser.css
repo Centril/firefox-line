@@ -18,6 +18,25 @@
  */
 
 @-moz-document url-prefix("chrome://browser/content/browser.xul") {
+	#firefox-line-search-button {
+		width: 32px;
+	}
+	#firefox-line-search-button > .toolbarbutton-icon {
+		list-style-image: url("chrome://browser/skin/search-indicator.png");
+		-moz-image-region: rect(0px, 20px, 20px, 0px);
+		width: 20px;
+		margin: 0px;
+		margin-inline-start: 4px;
+		padding: 0px !important;
+		border: none !important;
+	}
+	#firefox-line-search-button:hover > .toolbarbutton-icon {
+		-moz-image-region: rect(0px, 40px, 20px, 20px);
+	}
+	#firefox-line-search-button:hover:active > .toolbarbutton-icon {
+		-moz-image-region: rect(0px, 60px, 20px, 40px);
+	}
+
 	#firefox-line-search-view {
 		padding-left:5px;
 	}

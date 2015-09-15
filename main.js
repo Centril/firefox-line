@@ -30,6 +30,8 @@ const self						= require('sdk/self'),
 	  {setTimeout: async}		= require('sdk/timers'),
 	  {attachTo, detachFrom}	= require('sdk/content/mod');
 
+const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+
 // Import utils:
 const {	nullOrUndefined, noop,
 		unload, unloader, unloaderBind,
@@ -59,21 +61,33 @@ const ID = {
 		view:		'firefox-line-search-view',
 		attachTo:	'PanelUI-multiView'
 	}
-}
+};
+
+
+
+const currOpenSearch = '';
+const tabs = require( 'sdk/tabs' );
+tabs.on( 'activate', tab => {
+	const worker = tab.attach( { contentScriptFile: self.data.url( 'autodetect.js' ) } );
+	worker.port.emit( 'firefox-line-autodetect-received' );
+	worker.port.on( 'firefox-line-autodetect-response', () => {
+	} );
+} );
+
+
 
 const clip = require( 'sdk/clipboard' );
 const tabs = require( 'sdk/tabs' );
 const {enginesManager} = require( './search-engine.js' );
 const setupSearchButton = window => {
-	const	{CustomizableUI: CUI, Components: { utils: cu }, Services: { strings }, document, whereToOpenLink, openUILinkIn} = window,
-			ids = ID.searchProviders,
-			manager = enginesManager( window ),
-			nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
-			xul = elem => document.createElementNS( nsXUL, elem ),
-			trimIf = val => (val || "").trim(),
-			pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
-			sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
-			ub = byId( window, ID.urlbarTB );
+	const {CustomizableUI: CUI, Components: { utils: cu }, Services: { strings }, document, whereToOpenLink, openUILinkIn} = window,
+		  ids = ID.searchProviders,
+		  manager = enginesManager( window ),
+		  xul = elem => document.createElementNS( nsXUL, elem ),
+		  trimIf = val => (val || "").trim(),
+		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
+		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
+		  ub = byId( window, ID.urlbarTB );
 
 	// Construct our panelview:
 	const pv = {

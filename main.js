@@ -25,7 +25,7 @@ const self						= require('sdk/self'),
 	  {Style}					= require("sdk/stylesheet/style"),
 	  {modelFor}				= require('sdk/model/core'),
 	  {partial}					= require('sdk/lang/functional'),
-	  {remove: arrayRemove}		= require('sdk/util/array'),
+	  {remove, unique}			= require('sdk/util/array'),
 	  {isNull, isUndefined}		= require('sdk/lang/type'),
 	  {setTimeout: async}		= require('sdk/timers'),
 	  {attachTo, detachFrom}	= require('sdk/content/mod');
@@ -39,7 +39,7 @@ const {	nullOrUndefined, noop,
 		change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth,
 		insertAfter, byId,
-		attrs, removeChildren
+		attrs, removeChildren, appendChild
 	  } = require('utils');
 
 // Define all IDs used in addon:
@@ -65,29 +65,35 @@ const ID = {
 
 
 
-const currOpenSearch = '';
+
+
+
+
+
+
+
+const MAX_ADD_ENGINES = 5;
 const tabs = require( 'sdk/tabs' );
-tabs.on( 'activate', tab => {
-	const worker = tab.attach( { contentScriptFile: self.data.url( 'autodetect.js' ) } );
-	worker.port.emit( 'firefox-line-autodetect-received' );
-	worker.port.on( 'firefox-line-autodetect-response', () => {
-	} );
-} );
-
-
-
 const clip = require( 'sdk/clipboard' );
-const tabs = require( 'sdk/tabs' );
-const {enginesManager} = require( './search-engine.js' );
 const setupSearchButton = window => {
-	const {CustomizableUI: CUI, Components: { utils: cu }, Services: { strings }, document, whereToOpenLink, openUILinkIn} = window,
+	const {CustomizableUI: CUI, Components: { utils: cu }, Services: { strings, search, mm }, document, whereToOpenLink, openUILinkIn} = window,
 		  ids = ID.searchProviders,
-		  manager = enginesManager( window ),
+		  manager = require( './search-engine.js' ).enginesManager( window ),
 		  xul = elem => document.createElementNS( nsXUL, elem ),
 		  trimIf = val => (val || "").trim(),
 		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
 		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
 		  ub = byId( window, ID.urlbarTB );
+
+	let addEngineStack = [];
+	const addListener = msg => search.addEngine( msg.data.engine.href, 1, '', false, { onSuccess( e ) {
+		// When engines are defined on tab, temporarily add, remove and push to limited stack:
+		search.removeEngine( e );
+		addEngineStack.push( e );
+		addEngineStack = unique( addEngineStack );
+		if ( addEngineStack.length > MAX_ADD_ENGINES ) addEngineStack.shift();
+	} } );
+	mm.addMessageListener( 'Link:AddSearch', addListener );
 
 	// Construct our panelview:
 	const pv = {
@@ -97,8 +103,8 @@ const setupSearchButton = window => {
 		engines: attrs( xul( 'description' ), { class: 'search-panel-one-offs' } ),
 		add: xul( 'hbox' )
 	};
-	[pv.label, pv.body].forEach( elem => pv.panel.appendChild( elem ) );
-	[pv.engines, pv.add].forEach( elem => pv.body.appendChild( elem ) );
+	[pv.label, pv.body].forEach( appendChild( pv.panel ) );
+	[pv.engines, pv.add].forEach( appendChild( pv.body ) );
 	byId( window, ids.attachTo ).appendChild( pv.panel );
 
 	const engineCommand = event => {
@@ -227,11 +233,12 @@ const setupSearchButton = window => {
 	const e = [ids.button, ID.urlbar].map( i => attrs( byId( window, i ), { removable: 'true' } ) );
 	insertAfter( e[0], e[1] );
 
-	// Unloader: reverse removable, destroy the widget and the panel:
+	// Unloader: reverse removable, destroy widget & panel, remove addEngine listener:
 	unloader( () => {
 		attrs( e[1], { removable: 'false' } );
 		CUI.destroyWidget( ids.button );
 		pv.panel.remove();
+		mm.removeMessageListener( 'Link:AddSearch', addListener );
 	} );
 };
 
@@ -324,8 +331,8 @@ const imposeMaxWidth = (window, navBar, urlContainer) => {
 		const tbReduce = tbWidth < 100 ? tbWidth : 100;
 
 		let children = Array.from( navBar.childNodes );
-		arrayRemove( children, urlContainer );
-		arrayRemove( children, tb );
+		remove( children, urlContainer );
+		remove( children, tb );
 
 		let width = children.reduce( (a, v) => a - boundingWidth( v ), boundingWidth( navBar ) );
 		urlContainer.style.maxWidth = px( width - tbReduce );
@@ -473,7 +480,7 @@ const makeLine = window => {
 		insertAfter( navBar, tabsBar );
 
 		// Move stuff back to tabsBar:
-		saved.origTabs.forEach( node => tabsBar.appendChild( node ) );
+		saved.origTabs.forEach( appendChild( tabsBar ) );
 
 		backForward.style.marginRight = "";
 		modeFlexible();

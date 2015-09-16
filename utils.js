@@ -314,3 +314,12 @@ exports.attrs = methodKV( 'setAttribute' );
  */
 const removeChildren = elem => { while ( elem.firstChild ) elem.firstChild.remove() };
 exports.removeChildren = removeChildren;
+
+/**
+ * Returns a function that does appendChild to parent.
+ *
+ * @param  {Element}  parent  The parent element.
+ * @return {function}         The function.
+ */
+const appendChild = parent => parent.appendChild.bind( parent );
+exports.appendChild = appendChild;

@@ -18,125 +18,208 @@
  */
 "use strict";
 
-/*
- * Heavily refactored from: chrome://browser/content/search/search.xml
- * XBL is extremely unreadable, verbose, so we're not using it.
- */
+const MAX_ADD_ENGINES = 5;
 
 // Import SDK:
-const {partial} = require( 'sdk/lang/functional' );
+const [self, prefs, tabs, clip] = ['self', 'preferences/service', 'tabs', 'clipboard']
+	.map( v => require( 'sdk/' + v ) );
+const { unloader, on, px, insertAfter, byId, removeChildren,
+		attrs, appendChild }	= require('utils');
+const { ID } 					= require( 'ids' );
 
-const enginesManager = (window) => {
+const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+
+const enginesManager = window => {
 	// The services we are using: (nsIObserverService, nsIBrowserSearchService)
-	const	{ Services: { obs, search }, Components: { utils: {reportError}, isSuccessCode} } = window;
+	const { Services: { search }, Components: { utils: {reportError} } } = window;
 
-	let _engines, observer, registered = false;
-
-	/*
-	 * There are two seaprate lists of search engines, whose uses intersect
-	 * in this file. The search service (nsIBrowserSearchService and
-	 * nsSearchService.js) maintains a list of Engine objects which is used to
-	 * populate the list of available engines and to perform queries.
-	 * That list is accessed here via getEngines(), and it's that sort of
-	 * Engine that is passed to the observer as aEngine.
-	 *
-	 * In addition, browser.js fills two lists of autodetected search engines
-	 * (browser.engines and browser.hiddenEngines) as properties of
-	 * mCurrentBrowser.  Those lists contain unnamed JS objects of the form
-	 * { uri:, title:, icon: }, and that's what we use to determine
-	 * whether to show any "Add <EngineName>" menu items in the drop-down.
-	 *
-	 * The two types of engines are currently related by their identifying
-	 * titles (the Engine object's 'name'), although that may change; see bug
-	 * 335102.
-	 */
-	const moveEngine = (push, splice, engine) => window.gBrowser.browsers.forEach( browser => {
-		let bsplice = browser[splice], bpush = browser[push];
-		if ( bsplice ) {
-			// XXX This will need to be changed when engines are identified by
-			// URL rather than title; see bug 335102.
-			const removeTitle = engine.wrappedJSObject.name;
-			for ( let i = 0; i < bsplice.length; i++ ) {
-				const eng = bsplice[i];
-				if ( eng.title === removeTitle ) {
-					if ( !bpush )
-						bpush = browser[push] = [];
-
-					bpush.push( eng );
-					bsplice.splice( i, 1 );
-					break;
-				}
-			}
-		}
-	} );
-
-	// Setup our observer:
-	const noop = () => {};
-	const OBSERVE_TOPIC =  'browser-search-engine-modified';
-	const observeVerbs = {
-	    /*
-		 * If the engine that was just removed from the searchbox list was
-		 * autodetected on this page, move it to each browser's active list so it
-		 * will be offered to be added again.
-	     */
-		'engine-removed':	partial( moveEngine, 'hiddenEngines', 'push' ),	// offerNewEngine
-		/*
-		 * If the engine that was just added to the searchbox list was
-		 * autodetected on this page, move it to each browser's hidden list so it is
-		 * no longer offered to be added.
-		 */
-		'engine-added':		partial( moveEngine, 'push', 'hiddenEngines' ),	// hideNewEngine
-		/*
-		 * The current engine was changed.  Rebuilding the menu appears to
-		 * confuse its idea of whether it should be open when it's just
-		 * been clicked, so we force it to close now.
-		 */
-		'engine-current':	noop,
-		/*
-		 * An engine was removed (or hidden) or added, or an icon was changed.  Do nothing special.
-		 */
-		'engine-changed':	noop,
-	};
-	const observe = (updater, engine, topic, verb) => {
-		if ( topic === OBSERVE_TOPIC ) {
-			// Handle verb:
-			observeVerbs[verb]( engine );
-
-            // Invalidate engine list:
-            _engines = null;
-
-            // Emit event to update:
-            updater( verb );
-		}
-	};
+	let _engines = false;
 
 	return {
-		register: updater => {
-			if ( registered ) return;
-
-			// Register our observer.
-			obs.addObserver( observer = { observe: partial( observe, updater ) }, OBSERVE_TOPIC, false );
-
+		init: cb => search.init( status => {
 			// Make sure nsIBrowserSearchService is initialized:
-			search.init( status => {
-				if ( !(status & 0x80000000 === 0) ) {
-					updater( 'init' ); // isSuccessCode doesn't seem to work.
-					registered = true;
-				} else reportError( 'Cannot initialize search service, bailing out: ' + status );
-			} );
-		},
-		unregister: () => {
-			// Stop observing.
-			if ( registered ) {
-				obs.removeObserver( observer, OBSERVE_TOPIC );
-				registered = false;
-			}
-		},
+			if ( !(status & 0x80000000 === 0) ) cb();
+			else reportError( 'Cannot initialize search service, bailing out: ' + status );
+		} ),
 		byName: name => search.getEngineByName( name ),
-		get isRegistered() { return registered; },
+		add: (uri, cb = null) => search.addEngine( uri, 1, '', false, cb ),
+		remove: e => search.removeEngine( e ),
 		get engines() { return _engines || (_engines = search.getVisibleEngines()) },
 		get currentEngine() { return search.currentEngine || { name: "", uri: null } },
-		set currentEngine( engine ) { return (search.defaultEngine = search.currentEngine = engine) }
 	};
 };
-exports.enginesManager = enginesManager;
+
+const _setupSearchButton = (window, manager) => {
+	const {	CustomizableUI: CUI, Components: { utils: cu }, Services: { strings, search, mm },
+			document, whereToOpenLink, openUILinkIn,
+			KeyboardEvent, MouseEvent,
+			gURLBar: ub } = window,
+		  ids = ID.searchProviders,
+		  xul = elem => document.createElementNS( nsXUL, elem ),
+		  trimIf = val => (val || "").trim(),
+		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
+		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
+		  id = byId( window );
+
+	let addEngineStack = [];
+	const addListener = msg => manager.add( msg.data.engine.href, { onSuccess( e ) {
+		// When engines are defined on tab, temporarily add, remove and push to limited stack:
+		manager.remove( e );
+		if ( addEngineStack.some( ({uri, engine}) => e.name === engine.name ) ) return;
+		addEngineStack.push( { uri: msg.data.engine.href, engine: e } );
+		if ( addEngineStack.length > MAX_ADD_ENGINES ) addEngineStack.shift();
+	} } );
+	mm.addMessageListener( 'Link:AddSearch', addListener );
+
+	// Construct our panelview:
+	const make = (e, a) => attrs( xul( e ), a );
+	const pv = {
+		panel:	make( 'panelview',	 { id: ids.view, flex: '1'			} ),
+		body:	make( 'vbox',		 { class: 'panel-subview-body'		} ),
+		label:	make( 'label',		 { class: 'panel-subview-header',
+									   value: 'Search with providers'	} ),
+		engines:make( 'description', { class: 'search-panel-one-offs'	} ),
+		add:	make( 'vbox',		 { class: 'search-add-engines'		} )
+	};
+	[pv.label, pv.body].forEach( appendChild( pv.panel ) );
+	[pv.engines, pv.add].forEach( appendChild( pv.body ) );
+	id( ids.attachTo ).appendChild( pv.panel );
+
+	const engineCommand = event => {
+		// Handle clicks on an engine, get engine first:
+		const engine = manager.byName( event.target.getAttribute( 'engine' ) );
+
+		const computeWhere = () => {
+			// Where should we open link?
+			const newTabPref = prefs.get( 'browser.search.openintab', true );
+			if ( ( (event instanceof KeyboardEvent) && event.altKey) ^ newTabPref )
+				return "tab";
+			else if ( (event instanceof MouseEvent) && (event.button === 1 || event.ctrlKey) )
+				return "tab-background";
+			else
+				return whereToOpenLink( event, false, true );
+		};
+
+		const open = (data) => {
+			// Finally, make our search in the given tab.
+			const submission = engine.getSubmission( data, null, "searchbar" );
+			const where = computeWhere();
+			openUILinkIn( submission.uri.spec, where === "tab-background" ? "tab" : where, {
+				postData: submission.postData,
+				inBackground: where === "tab-background"
+			} );
+		};
+
+		// Get urlbar value if any:
+		let val = trimIf( ub.value );
+		if ( val.length === 0 ) {
+			// Get selected text if any:
+			const worker = tabs.activeTab.attach( { contentScriptFile: self.data.url( 'selection.js' ) } );
+			worker.port.on( 'firefox-line-selection-received', response => {
+				worker.destroy();
+
+				let val = trimIf( response );
+
+				// Get clipboard text if any:
+				if ( val.length === 0 ) val = trimIf( clip.get( 'text' ) );
+
+				open( val );
+			} );
+			worker.port.emit( 'firefox-line-selection-wanted', true );
+		} else open( val );
+	};
+
+	const addCommand = event => manager.add( addEngineStack.splice(
+		parseInt( event.target.getAttribute( 'engine' ) ), 1 )[0].uri );
+
+	const updater = () => {
+		removeChildren( pv.engines );
+		removeChildren( pv.add );
+
+		// Get our engines, separate current and the rest:
+		const curr = manager.currentEngine;
+		const engines = [for (e of manager.engines) if ( e.identifier !== curr.identifier ) e];
+		engines.unshift( curr );
+
+		const image = engine => pu.getImageURLForResolution( window, engine.iconURI.spec );
+		const label = (engine, format) => sb.formatStringFromName( format, [engine.name], 1 );
+		const slugRegxp = / /g;
+		const slug = engine => engine.name.replace( slugRegxp, '-' );
+
+		// Place out engines:
+		const maxCol = engines.length % 3 === 0 ? 3 : engines.length >= 16 ? 4 : 2;
+		engines.forEach( (engine, i, all) => {
+			const s = [i === 0, (i + 1) % maxCol === 0,
+				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
+			const b = attrs( xul( 'button' ), {
+				id: 'searchpanel-engine-one-off-item-' + slug( engine ),
+				class: ['searchbar-engine-one-off-item']
+					.concat( ['current', 'last-of-row', 'last-row'].filter( (c, i) => s[i] ) )
+					.join( ' ' ),
+				flex: '1',
+				tooltiptext: label( engine, 'searchtip' ),
+				label: engine.name,
+				image: image( engine ),
+				width: "59",
+				engine: engine.name
+			} );
+			on( b, 'command', engineCommand, true );
+			pv.engines.appendChild( b );
+		} );
+
+		// Place out "add-engines":
+		addEngineStack.reverse().forEach( ({uri, engine}, i) => {
+			const l = label( engine, "cmd_addFoundEngine" );
+			const b = attrs( xul( 'button' ), {
+				id: 'searchbar-add-engine-' + slug( engine ),
+				class: 'addengine-item',
+				tooltiptext: l,
+				label: l,
+				title: engine.name,
+				uri: uri,
+				image: image( engine ),
+				engine: addEngineStack.length - 1 - i
+			} );
+			on( b, 'command', addCommand, true );
+			pv.add.appendChild( b );
+		} );
+
+		// Adjust width & height:
+		const width = px( 62 * maxCol );
+		const height = 33 * Math.ceil( engines.length / maxCol );
+		attrs( pv.engines, { height: px( height ) } );
+		[pv.body, pv.engines, pv.add].forEach( v => {
+			attrs( pv.body, { width: width } );
+			pv.body.style.maxWidth = width;
+		} );
+	};
+
+ 	// Create the widget:
+	CUI.createWidget( {
+		id: ids.button,
+		type: 'view',
+		viewId: ids.view,
+		defaultArea: CUI.AREA_NAVBAR,
+		label: 'Search',
+		tooltiptext: 'Search with providers.',
+		onViewShowing: updater
+	} );
+
+	// Make urlbar removable and move button to after urlbar:
+	const e = [ids.button, ID.urlbar].map( i => attrs( id( i ), { removable: 'true' } ) );
+	insertAfter( e[0], e[1] );
+
+	// Unloader: reverse removable, destroy widget & panel, remove addEngine listener:
+	unloader( () => {
+		attrs( e[1], { removable: 'false' } );
+		CUI.destroyWidget( ids.button );
+		pv.panel.remove();
+		mm.removeMessageListener( 'Link:AddSearch', addListener );
+	} );
+};
+
+const setupSearchButton = window => {
+	const manager = enginesManager( window );
+	manager.init( () => _setupSearchButton( window, manager ) );
+};
+exports.setupSearchButton = setupSearchButton;

@@ -93,15 +93,38 @@
 		padding-bottom:1px;
 		box-shadow:0px -2px 0px rgb(51, 153, 255) inset, 0px 1px 0px rgb(51, 153, 255);
 	}
+
+	#firefox-line-search-view .search-add-engines {
+		margin-right:5px;
+	}
 	#firefox-line-search-view .addengine-item {
 		-moz-appearance: none;
 		border: medium none;
 		height: 32px;
 		margin: 0px;
-		padding: 0px 10px;
+		padding: 4px 10px 0px 10px;
+		background: transparent;
+	}
+	#firefox-line-search-view .addengine-item:hover {
+		background-color: #39F;
 	}
 	#firefox-line-search-view .addengine-item:first-of-type {
 		border-top: 1px solid #CCC;
+	}
+	#firefox-line-search-view .addengine-item > .button-box > .button-icon {
+		-moz-binding: url("chrome://browser/content/urlbarBindings.xml#addengine-icon");
+		display: -moz-stack;
+		margin-left:-5px;
+		margin-right:10px;
+	}
+	#firefox-line-search-view .addengine-icon {
+		width: 16px;
+	}
+	#firefox-line-search-view .addengine-badge {
+		width: 16px;
+		height: 16px;
+		margin: -7px -9px 7px 9px;
+		list-style-image: url("chrome://browser/skin/badge-add-engine.png");
 	}
 }
 

@@ -19,228 +19,19 @@
 'use strict';
 
 // Import SDK:
-const self						= require('sdk/self'),
-	  globalPrefs				= require('sdk/preferences/service'),
-	  sp						= require("sdk/simple-prefs"),
-	  {Style}					= require("sdk/stylesheet/style"),
-	  {modelFor}				= require('sdk/model/core'),
-	  {partial}					= require('sdk/lang/functional'),
-	  {remove, unique}			= require('sdk/util/array'),
-	  {isNull, isUndefined}		= require('sdk/lang/type'),
-	  {setTimeout: async}		= require('sdk/timers'),
-	  {attachTo, detachFrom}	= require('sdk/content/mod');
-
-const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-
-// Import utils:
+const [ self, sp, {Style}, {modelFor},
+		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] =
+	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core',
+	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ]
+	   .map( v => require( 'sdk/' + v ) );
+const { ID }					= require( 'ids' );
+const { setupSearchButton }		= require( 'search-engine' );
 const {	nullOrUndefined, noop,
 		unload, unloader, unloaderBind,
-		getAllWindows, watchWindows,
-		change, on, once, onMulti,
+		watchWindows, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth,
 		insertAfter, byId,
-		attrs, removeChildren, appendChild
-	  } = require('utils');
-
-// Define all IDs used in addon:
-const ID = {
-	search:			'search-container',
-	urlbar:			'urlbar-container',
-	urlbarTB:		'urlbar',
-	navBar:			'nav-bar',
-	navBarTarget: 	'nav-bar-customization-target',
-	tabsBar:		'TabsToolbar',
-	tabs:			'tabbrowser-tabs',
-	titlebarPlaceholder: 'titlebar-placeholder-on-TabsToolbar-for-captions-buttons',
-	commands:		'mainCommandSet',
-	back: 			'Browser:Back',
-	forward:		'Browser:Forward',
-	backForward:	'unified-back-forward-button',
-	searchProviders: {
-		button:		'firefox-line-search-button',
-		view:		'firefox-line-search-view',
-		attachTo:	'PanelUI-multiView'
-	}
-};
-
-
-
-
-
-
-
-
-
-
-const MAX_ADD_ENGINES = 5;
-const tabs = require( 'sdk/tabs' );
-const clip = require( 'sdk/clipboard' );
-const setupSearchButton = window => {
-	const {CustomizableUI: CUI, Components: { utils: cu }, Services: { strings, search, mm }, document, whereToOpenLink, openUILinkIn} = window,
-		  ids = ID.searchProviders,
-		  manager = require( './search-engine.js' ).enginesManager( window ),
-		  xul = elem => document.createElementNS( nsXUL, elem ),
-		  trimIf = val => (val || "").trim(),
-		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
-		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
-		  ub = byId( window, ID.urlbarTB );
-
-	let addEngineStack = [];
-	const addListener = msg => search.addEngine( msg.data.engine.href, 1, '', false, { onSuccess( e ) {
-		// When engines are defined on tab, temporarily add, remove and push to limited stack:
-		search.removeEngine( e );
-		addEngineStack.push( e );
-		addEngineStack = unique( addEngineStack );
-		if ( addEngineStack.length > MAX_ADD_ENGINES ) addEngineStack.shift();
-	} } );
-	mm.addMessageListener( 'Link:AddSearch', addListener );
-
-	// Construct our panelview:
-	const pv = {
-		panel:	attrs( xul( 'panelview' ), { id: ids.view, flex: '1' } ),
-		body:	attrs( xul( 'vbox' ), { class: 'panel-subview-body' } ),
-		label:	attrs( xul( 'label' ), { class: 'panel-subview-header', value: 'Search with providers' } ),
-		engines: attrs( xul( 'description' ), { class: 'search-panel-one-offs' } ),
-		add: xul( 'hbox' )
-	};
-	[pv.label, pv.body].forEach( appendChild( pv.panel ) );
-	[pv.engines, pv.add].forEach( appendChild( pv.body ) );
-	byId( window, ids.attachTo ).appendChild( pv.panel );
-
-	const engineCommand = event => {
-		// Handle clicks on an engine, get engine first:
-		const engine = manager.byName( event.target.getAttribute( 'data-engine' ) );
-
-		const computeWhere = () => {
-			// Where should we open link?
-			const newTabPref = globalPrefs.get( 'browser.search.openintab', true );
-			if ( ( (event instanceof window.KeyboardEvent) && event.altKey) ^ newTabPref )
-				return "tab";
-			else if ( (event instanceof window.MouseEvent) && (event.button === 1 || event.ctrlKey) )
-				return "tab-background";
-			else
-				return whereToOpenLink( event, false, true );
-		};
-
-		const open = (data) => {
-			// Finally, make our search in the given tab.
-			const submission = engine.getSubmission( data, null, "searchbar" );
-			const where = computeWhere();
-			openUILinkIn( submission.uri.spec, where === "tab-background" ? "tab" : where, {
-				postData: submission.postData,
-				inBackground: where === "tab-background"
-			} );
-		};
-
-		// Get urlbar value if any:
-		let val = trimIf( ub.value );
-		if ( val.length === 0 ) {
-			// Get selected text if any:
-			const worker = tabs.activeTab.attach( { contentScriptFile: self.data.url( 'selection.js' ) } );
-			worker.port.on( 'firefox-line-selection-received', response => {
-				worker.destroy();
-
-				let val = trimIf( response );
-
-				// Get clipboard text if any:
-				if ( val.length === 0 ) val = trimIf( clip.get( 'text' ) );
-
-				open( val );
-			} );
-			worker.port.emit( 'firefox-line-selection-wanted', true );
-		} else open( val );
-	};
-
-	const updater = () => {
-		removeChildren( pv.engines );
-		removeChildren( pv.add );
-
-		// Get our engines, separate current and the rest:
-		const curr = manager.currentEngine;
-		const engines = [for (e of manager.engines) if ( e.identifier !== curr.identifier ) e];
-		engines.unshift( curr );
-
-		// Place out engines:
-		const maxCol = engines.length % 3 === 0 ? 3 : engines.length >= 16 ? 4 : 2;
-		engines.forEach( (engine, i, all) => {
-			const s = [i === 0, (i + 1) % maxCol === 0,
-				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
-			const b = attrs( xul( 'button' ), {
-				id: 'searchpanel-engine-one-off-item-' + engine.name,
-				class: ['searchbar-engine-one-off-item']
-					.concat( ['current', 'last-of-row', 'last-row'].filter( (c, i) => s[i] ) )
-					.join( ' ' ),
-				flex: '1',
-				tooltiptext: sb.formatStringFromName( 'searchtip', [engine.name], 1 ),
-				label: engine.name,
-				image: pu.getImageURLForResolution( window, engine.iconURI.spec ),
-				width: "59",
-				"data-engine": engine.name
-			} );
-			on( b, 'command', engineCommand, true );
-			pv.engines.appendChild( b );
-		} );
-
-		// Place out "add":
-		/*
-		const addEngineButton = engine => {
-			const b = attrs( xul( 'button' ), {
-				id: 'searchbar-add-engine-' + engine.name,
-				class: 'addengine-item',
-				uri: engine.uri,
-				tooltiptext: engine.uri,
-				label: sb.formatStringFromName( "cmd_addFoundEngine", [engine.title], 1 ),
-				title: engine.title,
-				image: pu.getImageURLForResolution( window, engine.icon ),
-				pack: "start",
-				crop: "end"
-			} );
-			pv.add.appendChild( b );
-		};
-		const addEngines = window.gBrowser.selectedBrowser.engines;
-		if ( addEngines && addEngines.length > 0 )
-			addEngines.forEach( addEngineButton );
-		*/
-
-		// Adjust width & height:
-		const width = px( 61 * maxCol );
-		const height = 33 * Math.ceil( engines.length / maxCol );
-		attrs( pv.engines, {
-			height: px( height ),
-			width: width
-		} );
-		pv.engines.style.maxWidth = width;
-
-		// fix this for CUI PanelUI:
-		//pv.panel.style.height = px( height * 2 );
-	};
-
- 	// Create the widget:
-	CUI.createWidget( {
-		id: ids.button,
-		type: 'view',
-		viewId: ids.view,
-		defaultArea: CUI.AREA_NAVBAR,
-		label: 'Search',
-		tooltiptext: 'Search with providers.',
-		onViewShowing: event => {
-			if ( manager.isRegistered ) updater();
-			else manager.register( updater )
-		}
-	} );
-
-	// Make urlbar removable and move button to after urlbar:
-	const e = [ids.button, ID.urlbar].map( i => attrs( byId( window, i ), { removable: 'true' } ) );
-	insertAfter( e[0], e[1] );
-
-	// Unloader: reverse removable, destroy widget & panel, remove addEngine listener:
-	unloader( () => {
-		attrs( e[1], { removable: 'false' } );
-		CUI.destroyWidget( ids.button );
-		pv.panel.remove();
-		mm.removeMessageListener( 'Link:AddSearch', addListener );
-	} );
-};
+		attrs, appendChild }	= require('utils');
 
 // Handle the user preferences tabMinWidth & tabMaxWidth:s.
 const tabWidthHandler = (saved, window) => {
@@ -277,6 +68,7 @@ const tabWidthHandler = (saved, window) => {
 // Identity Label Handler:
 const identityLabelRetracter = window => {
 	// Get some resources:
+	const {getComputedStyle, gURLBar} = window;
 	const windowModel = modelFor( window );
 	const label = byId( window, "identity-icon-labels" );
 	const labelWidth = setWidth( label );
@@ -288,26 +80,24 @@ const identityLabelRetracter = window => {
 
 	const resize = () => {
 		reset();
-		oldWidth = window.getComputedStyle( label ).width;
+		oldWidth = getComputedStyle( label ).width;
 		labelWidth( boundingWidthPx( label ) );
 		label.offsetWidth; // Force repaint
 		labelWidth( oldWidth );
 	};
 
 	const update = () => {
-		if ( window.gURLBar.focused ) {
+		if ( gURLBar.focused ) {
 			oldWidth = boundingWidthPx( label );
 			labelWidth( px( '0' ) );
-		} else {
-			labelWidth( oldWidth );
-		}
+		} else labelWidth( oldWidth );
 	};
 
 	const bind = () => {
-		updateOff = onMulti( window.gURLBar, ['blur', 'focus'], update );
+		updateOff = onMulti( gURLBar, ['blur', 'focus'], update );
 		windowModel.tabs.on( 'activate', resize );
-		async( () => resizeOff = on( window, 'resize', resize ), 100 );
-	}
+		setTimeout( () => resizeOff = on( window, 'resize', resize ), 100 );
+	};
 
 	const unbind = () => {
 		reset();
@@ -316,7 +106,7 @@ const identityLabelRetracter = window => {
 		updateOff.forEach( v => v() );
 		resizeOff = noop;
 		updateOff = [];
-	}
+	};
 
 	const prefHandler = () => sp.prefs.retractIdentityLabel ? bind() : unbind();
 	prefHandler();
@@ -338,15 +128,14 @@ const imposeMaxWidth = (window, navBar, urlContainer) => {
 		urlContainer.style.maxWidth = px( width - tbReduce );
 	};
 
-	async( onResize, 100 );
+	setTimeout( onResize, 100 );
 	on( window, 'resize', onResize );
 }
 
 const makeLine = window => {
 	const saved = {},
-		{document, gBrowser, gURLBar} = window,
+		{document, gBrowser, gURLBar, CustomizableUI: CUI} = window,
 		unloader = unloaderBind( window ),
-		CUI = window.CustomizableUI,
 		id = byId( window );
 
 	// Apply browser.css:
@@ -392,12 +181,7 @@ const makeLine = window => {
 	sp.on( 'urlbarRight', placeTabControls );
 
 	// Create a dummy backForward object if we don't have the node:
-	backForward = backForward || {
-		boxObject: {
-			width: 0,
-		},
-		style: {},
-	};
+	backForward = backForward || { boxObject: { width: 0 }, style: {} };
 
 	// Handle Identity Label:
 	identityLabelRetracter( window );
@@ -460,7 +244,7 @@ const makeLine = window => {
 	} );
 
 	// Make sure we set the right size of the urlbar on blur or focus:
-	onMulti( window.gURLBar, ['blur', 'focus'], updateLayout );
+	onMulti( gURLBar, ['blur', 'focus'], updateLayout );
 
 	// Setup Search Button:
 	setupSearchButton( window );
@@ -486,29 +270,21 @@ const makeLine = window => {
 		modeFlexible();
 	} );
 
-	// Do the custom search button command instead of the original:
-	on( commands, "command", event => {
-		if ( event.target.id === "Tools:Search" ) {
-			event.stopPropagation();
-			searchButton.click();
-		}
-	} );
-
 	// Detect escaping from the location bar when nothing changes:
 	on( gURLBar, "keydown", event => {
 		if ( event.keyCode === event.DOM_VK_ESCAPE ) {
 			let {popupOpen, value} = gURLBar;
-			async( () => {
+			setTimeout( () => {
 				// Only return focus to the page if nothing changed since escaping
 				if  ( gURLBar.popupOpen === popupOpen && gURLBar.value === value )
 					gBrowser.selectedBrowser.focus();
 			} );
 		}
 	} );
-}
+};
 
 // Plugin entry point:
-const main = () => watchWindows( window => async( partial( makeLine, window ) ) );
+const main = () => watchWindows( window => setTimeout( partial( makeLine, window ) ) );
 
 main();
 

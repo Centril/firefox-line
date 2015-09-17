@@ -18,24 +18,19 @@
  */
 'use strict';
 
-// Import SDK:
-const [ self, sp, {Style}, {modelFor},
-		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] =
-	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core',
-	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ]
-	   .map( v => require( 'sdk/' + v ) );
+// Import utils, search-engine, ids, SDK:
 const { ID }					= require( 'ids' );
 const { setupSearchButton }		= require( 'search-engine' );
-const {	nullOrUndefined, noop,
-		unload, unloader, unloaderBind,
-		watchWindows, change, on, once, onMulti,
-		px, boundingWidth, boundingWidthPx, setWidth,
-		insertAfter, byId,
+const {	sdks, nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
+		px, boundingWidth, boundingWidthPx, setWidth, insertAfter, byId,
 		attrs, appendChild }	= require('utils');
+const [ self, sp, {Style}, {modelFor}, {when: unloader},
+		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
+	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
+	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ] );
 
 // Handle the user preferences tabMinWidth & tabMaxWidth:s.
-const tabWidthHandler = (saved, window) => {
-	[['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
+const tabWidthHandler = (saved, window) => [['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
 		// Deatch current attached style modification if any.
 		const detach = () => {
 			if ( !nullOrUndefined( saved[e[1]] ) ) {
@@ -45,7 +40,7 @@ const tabWidthHandler = (saved, window) => {
 		};
 
 		// Detach on unload.
-		unloader( detach, window );
+		unloader( detach );
 
 		// Make, apply and add listener:
 		const handleWidth = () => {
@@ -62,8 +57,7 @@ const tabWidthHandler = (saved, window) => {
 		}
 		handleWidth();
 		sp.on( e[1], handleWidth );
-	} );
-}
+} );
 
 // Identity Label Handler:
 const identityLabelRetracter = window => {
@@ -76,7 +70,7 @@ const identityLabelRetracter = window => {
 	let resizeOff = noop, updateOff = [];
 
 	const reset = partial( labelWidth, 'auto' );
-	unloader( reset, window );
+	unloader( reset );
 
 	const resize = () => {
 		reset();
@@ -135,7 +129,6 @@ const imposeMaxWidth = (window, navBar, urlContainer) => {
 const makeLine = window => {
 	const saved = {},
 		{document, gBrowser, gURLBar, CustomizableUI: CUI} = window,
-		unloader = unloaderBind( window ),
 		id = byId( window );
 
 	// Apply browser.css:
@@ -284,9 +277,4 @@ const makeLine = window => {
 };
 
 // Plugin entry point:
-const main = () => watchWindows( window => setTimeout( partial( makeLine, window ) ) );
-
-main();
-
-// Clean up with unloaders when we're deactivating:
-require("sdk/system/unload").when( reason => unload() );
+watchWindows( window => setTimeout( partial( makeLine, window ) ) );

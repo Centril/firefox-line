@@ -18,12 +18,13 @@
  */
 'use strict';
 
-const events		= require('sdk/dom/events'),
-	  window_utils	= require('sdk/window/utils'),
-	  windows		= require('sdk/windows').browserWindows,
-	  {viewFor}		= require("sdk/view/core"),
-	  {partial, curry, compose} = require('sdk/lang/functional'),
-	  {isNull, isUndefined, isFunction}	= require('sdk/lang/type');
+const sdks = list => list.map( v => require( 'sdk/' + v ) );
+exports.sdks = sdks;
+
+const [	events, window_utils, {browserWindows: windows}, {viewFor}, {when: unloader},
+		{partial, curry, compose}, {isNull, isUndefined, isFunction}] = sdks( [
+		'dom/events', 'window/utils', 'windows', 'view/core',
+		'system/unload', 'lang/functional', 'lang/type'] );
 
 /**
  * If v is function, call it with rest of parameters,
@@ -78,70 +79,6 @@ exports.getAllWindows = getAllWindows;
 const nullOrUndefined = v => isNull( v ) || isUndefined( v );
 exports.nullOrUndefined = nullOrUndefined;
 
-const unloader = (() => {
-	let unloaders = [];
-
-	return {
-		register: ( callback, container ) => {
-			// Wrap the callback in a function that ignores failures
-			const cb = () => {
-				try {
-					callback();
-				}
-				catch( ex ) {}
-			}
-
-			// Provide a way to remove the unloader
-			const removeUnloader = () => {
-				const index = unloaders.indexOf( cb );
-				if ( index !== -1 )
-					unloaders.splice( index, 1 );
-			}
-
-			if ( !nullOrUndefined( container ) ) {
-				// Remove the unloader when the container unloads
-				events.on( container, 'unload', removeUnloader );
-
-				// Wrap the callback to additionally remove the unload listener
-				let origCallback = callback;
-				callback = () => {
-					events.removeListener( container, "unload", removeUnloader );
-					origCallback();
-				}
-			}
-
-			unloaders.push( cb );
-			return removeUnloader;
-		},
-		runAll: () => {
-			unloaders.forEach( cb => cb() );
-			unloaders = [];
-		},
-	}
-})();
-
-/**
- * Calls all unloaders and removes them after.
- */
-exports.unload = unloader.runAll;
-
-/**
- * Registers an unloader running callback and optionally a container that when unloaded will unregister the unloader.
- *
- * @param {function}        callback     The callback to run on unload.
- * @param {Element|Window}  [container]  An optional container which when unloader will deregister the unloader.
- */
-exports.unloader = unloader.register;
-
-/**
- * Returns an unloader function where the second argument (component) is bound.
- * In other words, partial application from the right in functional terms of the function unloader.
- *
- * @param  {component}  component  The component to partially apply from the right.
- * @return {function}              The partially applied unloader function.
- */
-exports.unloaderBind = component => callback => unloader.register( callback, component );
-
 /**
  * Replace a value of a property with another value or a function of the original value.
  * On unload, the change is reversed.
@@ -154,18 +91,17 @@ exports.unloaderBind = component => callback => unloader.register( callback, com
 const change = (window, obj, prop, val) => {
 	let orig = obj[prop];
 	obj[prop] = voc( val, orig );
-	unloader.register( () => obj[prop] = orig, window );
+	unloader( () => obj[prop] = orig, window );
 }
 exports.change = change;
 
 const undoListener = (element, type, listener, capture) => {
-	const undoListen = () => events.removeListener( element, type, listener, capture );
-	const undoUnload = partial( unloader.register, undoListen, domWindow( element ) );
-	return () => {
-		undoListen();
-		undoUnload();
-	}
-}
+	let use = false;
+	const undo		= () => events.removeListener( element, type, listener, capture );
+	const unload	= () => { if ( use ) undo(); use = false; };
+	unloader( unload );
+	return () => { undo(); unload(); };
+};
 
 /**
  * Registers listener on element on type events.
@@ -211,9 +147,8 @@ exports.once = once;
  * @param  {Boolean}  capture  Bubbling related, see addEventListener. Default value: false.
  * @return {function}          A function that undoes the registration.
  */
-const onMulti = (element, types, listener, capture = false) => {
-	return types.map( type => on( element, type, listener ) );
-}
+const onMulti = (element, types, listener, capture = false) =>
+	types.map( type => on( element, type, listener ) );
 exports.onMulti = onMulti;
 
 /**
@@ -230,7 +165,7 @@ const watchWindows = callback => {
 	// Watch for new browser windows opening then wait for it to load:
 	const listener = window => callback( viewFor( window ) );
 	windows.on( 'open', listener );
-	unloader.register( () => windows.off( 'open', listener ) );
+	unloader( () => windows.off( 'open', listener ) );
 }
 exports.watchWindows = watchWindows;
 

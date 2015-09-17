@@ -16,18 +16,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-"use strict";
+'use strict';
 
 const MAX_ADD_ENGINES = 5;
 
-// Import SDK:
-const [self, prefs, tabs, clip] = ['self', 'preferences/service', 'tabs', 'clipboard']
-	.map( v => require( 'sdk/' + v ) );
-const { unloader, on, px, insertAfter, byId, removeChildren,
-		attrs, appendChild }	= require('utils');
-const { ID } 					= require( 'ids' );
-
-const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+// Import utils, ids, SDK:
+const { sdks, on, px, insertAfter, byId, removeChildren, attrs, appendChild,
+		xul: _xul }	= require('utils');
+const { ID }	= require( 'ids' );
+const [ self, prefs, tabs, clip, {when: unloader} ] = sdks(
+	['self', 'preferences/service', 'tabs', 'clipboard', 'system/unload'] );
 
 const enginesManager = window => {
 	// The services we are using: (nsIObserverService, nsIBrowserSearchService)
@@ -55,11 +53,12 @@ const _setupSearchButton = (window, manager) => {
 			KeyboardEvent, MouseEvent,
 			gURLBar: ub } = window,
 		  ids = ID.searchProviders,
-		  xul = elem => document.createElementNS( nsXUL, elem ),
 		  trimIf = val => (val || "").trim(),
 		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
 		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
-		  id = byId( window );
+		  id = byId( window ),
+		  nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
+		  xul = elem => document.createElementNS( nsXUL, elem );
 
 	let addEngineStack = [];
 	const addListener = msg => manager.add( msg.data.engine.href, { onSuccess( e ) {

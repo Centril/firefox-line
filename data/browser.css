@@ -16,27 +16,21 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 @-moz-document url-prefix("chrome://browser/content/browser.xul") {
-	#nav-bar-customization-target > #firefox-line-search-button {
-		width: 32px;
-	}
-	#nav-bar-customization-target > #firefox-line-search-button:first-child {
-		padding-right: 0px !important;
-		margin: 0px -5px 0px -2px !important;
-	}
-	#nav-bar-customization-target > #firefox-line-search-button:not(:first-child) > .toolbarbutton-icon {
-		margin-inline-start: 2px !important;
-	}
-	#nav-bar-customization-target > #firefox-line-search-button > .toolbarbutton-icon {
-		width: 20px;
-		margin: 0px;
-		margin-inline-start: 4px;
+	#nav-bar-customization-target > #firefox-line-search-button { width: 32px; }
+
+	#firefox-line-search-button > .toolbarbutton-icon {
 		padding: 0px !important;
 		border: none !important;
+		margin: 0px !important;
 	}
-	#urlbar-container + #firefox-line-search-button {
-		margin-left: -5px !important;
+
+	#firefox-line-search-button + #urlbar-container,
+	#urlbar-container + #firefox-line-search-button,
+	#urlbar-search-splitter + #firefox-line-search-button { margin-left:-5px !important; }
+
+	#nav-bar-customization-target > #firefox-line-search-button > .toolbarbutton-icon {
+		margin-inline-start: 4px !important;
 	}
 	#firefox-line-search-button > .toolbarbutton-icon {
 		list-style-image: url("chrome://browser/skin/search-indicator.png");
@@ -49,9 +43,7 @@
 		-moz-image-region: rect(0px, 60px, 20px, 40px);
 	}
 
-	#firefox-line-search-view {
-		padding-left:5px;
-	}
+	#firefox-line-search-view { padding-left:5px; }
 	#firefox-line-search-view .search-panel-one-offs {
 		margin: 0px !important;
 		line-height: 0;
@@ -94,9 +86,7 @@
 		box-shadow:0px -2px 0px rgb(51, 153, 255) inset, 0px 1px 0px rgb(51, 153, 255);
 	}
 
-	#firefox-line-search-view .search-add-engines {
-		margin-right:5px;
-	}
+	#firefox-line-search-view .search-add-engines { margin-right:5px; }
 	#firefox-line-search-view .addengine-item {
 		-moz-appearance: none;
 		border: medium none;
@@ -105,21 +95,15 @@
 		padding: 4px 10px 0px 10px;
 		background: transparent;
 	}
-	#firefox-line-search-view .addengine-item:hover {
-		background-color: #39F;
-	}
-	#firefox-line-search-view .addengine-item:first-of-type {
-		border-top: 1px solid #CCC;
-	}
+	#firefox-line-search-view .addengine-item:hover { background-color: #39F; }
+	#firefox-line-search-view .addengine-item:first-of-type { border-top: 1px solid #CCC; }
 	#firefox-line-search-view .addengine-item > .button-box > .button-icon {
 		-moz-binding: url("chrome://browser/content/urlbarBindings.xml#addengine-icon");
 		display: -moz-stack;
 		margin-left:-5px;
 		margin-right:10px;
 	}
-	#firefox-line-search-view .addengine-icon {
-		width: 16px;
-	}
+	#firefox-line-search-view .addengine-icon { width: 16px; }
 	#firefox-line-search-view .addengine-badge {
 		width: 16px;
 		height: 16px;
@@ -127,7 +111,6 @@
 		list-style-image: url("chrome://browser/skin/badge-add-engine.png");
 	}
 }
-
 
 @-moz-document url-prefix("chrome://browser/content/browser.xul") {
 	/* Start: Copied from #TabsToolbar*/
@@ -146,9 +129,7 @@
 		--tab-separator-opacity: 0.4;
 	}
 
-	#nav-bar #new-tab-button {
-		width: 26px;
-	}
+	#nav-bar #new-tab-button { width: 26px; }
 	.tabs-newtab-button, #nav-bar #new-tab-button, #nav-bar toolbarpaletteitem > #new-tab-button {
 		list-style-image: url("chrome://browser/skin/tabbrowser/newtab.png") !important;
 		-moz-image-region: auto !important;
@@ -167,20 +148,12 @@
 	}
 	/* End: Copied from #TabsToolbar*/
 
-	#TabsToolbar {
-		display:none !important;
-	}
+	#TabsToolbar, #urlbar-search-splitter { display:none !important; }
 
-	#nav-bar, #back-button, #forward-button {
-		height:30px;
-	}
-	#urlbar {
-		height:31px;
-	}
+	#nav-bar, #back-button, #forward-button { height:30px; }
+	#urlbar { height:31px; }
 
-	.tabbrowser-arrowscrollbox {
-		min-width:0px !important;
-	}
+	.tabbrowser-arrowscrollbox { min-width:0px !important; }
 
 	#unified-back-forward-button {
 		-moz-transition-property: margin-right;
@@ -202,13 +175,9 @@
 	}
 
 	/* Reduce space between caption buttons and menu button: */
-	.titlebar-placeholder[type="caption-buttons"] {
-		margin-left:0px;
-	}
+	.titlebar-placeholder[type="caption-buttons"] { margin-left:0px; }
 
-	.tabbrowser-tab:not([pinned]) {
-		width:auto !important;
-	}
+	.tabbrowser-tab:not([pinned]) { width:auto !important; }
 
 	#main-window .tabbrowser-arrowscrollbox > .arrowscrollbox-scrollbox {
 		padding-left: 0px !important;
@@ -217,63 +186,19 @@
 }
 
 @-moz-document url-prefix("chrome://browser/content/browser.xul") {
-	@media (max-width: 700px) {
-		#urlbar-container {
-			min-width: 45ch !important;
-		}
+	@media (max-width: 700px) and (min-width:0px) {
 		#identity-box {
 			padding-right: 5px !important;
 			padding-left: 0px !important;
 		}
 		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
-		#urlbar-reload-button,
-		#action-button--firefox-line-searchbutton {
-			display:none !important;
-		}
+		#urlbar-reload-button { display:none !important; }
 	}
-	@media (max-width: 600px) {
-		#urlbar-container {
-			min-width: 40ch !important;
-		}
-		#identity-box {
-			padding-right: 5px !important;
-			padding-left: 0px !important;
-		}
-		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
-		#urlbar-reload-button,
-		#back-button, #forward-button,
-		#action-button--firefox-line-searchbutton {
-			display:none !important;
-		}
+	@media (max-width: 600px) and (min-width:0px) {
+		#back-button, #forward-button { display:none !important; }
 	}
-	@media (max-width: 500px) {
-		#urlbar-container {
-			min-width: 35ch !important;
-		}
-		#identity-box {
-			padding-right: 5px !important;
-			padding-left: 0px !important;
-		}
-		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
-		#urlbar-reload-button,
-		#back-button, #forward-button, #tabbrowser-tabs,
-		#action-button--firefox-line-searchbutton {
-			display:none !important;
-		}
-	}
-	@media (max-width: 400px) {
-		#urlbar-container {
-			min-width: 20ch !important;
-		}
-		#identity-box {
-			padding-right: 5px !important;
-			padding-left: 0px !important;
-		}
-		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
-		#identity-icon-labels, #urlbar-reload-button,
-		#back-button, #forward-button, #new-tab-button, #tabbrowser-tabs,
-		#action-button--firefox-line-searchbutton {
-			display:none !important;
-		}
-	}
+	@media (max-width: 700px) { #urlbar-container { min-width: 45ch !important; } }
+	@media (max-width: 600px) { #urlbar-container { min-width: 40ch !important; } }
+	@media (max-width: 500px) { #urlbar-container { min-width: 35ch !important; } }
+	@media (max-width: 400px) { #urlbar-container { min-width: 20ch !important; } }
 }

@@ -21,18 +21,14 @@
 const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
-const { sdks, on, px, insertAfter, byId, removeChildren, attrs, appendChild,
-		xul: _xul }	= require('utils');
-const { ID }	= require( 'ids' );
+const { sdks, on, px, byId, removeChildren, attrs, appendChild, moveWidget } = require('utils');
+const { ID } = require( 'ids' );
 const [ self, prefs, tabs, clip, {when: unloader} ] = sdks(
 	['self', 'preferences/service', 'tabs', 'clipboard', 'system/unload'] );
 
 const enginesManager = window => {
 	// The services we are using: (nsIObserverService, nsIBrowserSearchService)
 	const { Services: { search }, Components: { utils: {reportError} } } = window;
-
-	let _engines = false;
-
 	return {
 		init: cb => search.init( status => {
 			// Make sure nsIBrowserSearchService is initialized:
@@ -42,7 +38,7 @@ const enginesManager = window => {
 		byName: name => search.getEngineByName( name ),
 		add: (uri, cb = null) => search.addEngine( uri, 1, '', false, cb ),
 		remove: e => search.removeEngine( e ),
-		get engines() { return _engines || (_engines = search.getVisibleEngines()) },
+		get engines() { return search.getVisibleEngines() },
 		get currentEngine() { return search.currentEngine || { name: "", uri: null } },
 	};
 };
@@ -52,7 +48,7 @@ const _setupSearchButton = (window, manager) => {
 			document, whereToOpenLink, openUILinkIn,
 			KeyboardEvent, MouseEvent,
 			gURLBar: ub } = window,
-		  ids = ID.searchProviders,
+		  ids = ID.newSearch,
 		  trimIf = val => (val || "").trim(),
 		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
 		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
@@ -194,7 +190,7 @@ const _setupSearchButton = (window, manager) => {
 	};
 
  	// Create the widget:
-	CUI.createWidget( {
+	const widget = CUI.createWidget( {
 		id: ids.button,
 		type: 'view',
 		viewId: ids.view,
@@ -205,12 +201,10 @@ const _setupSearchButton = (window, manager) => {
 	} );
 
 	// Make urlbar removable and move button to after urlbar:
-	const e = [ids.button, ID.urlbar].map( i => attrs( id( i ), { removable: 'true' } ) );
-	insertAfter( e[0], e[1] );
+	moveWidget( CUI, widget.id, ID.urlbar );
 
 	// Unloader: reverse removable, destroy widget & panel, remove addEngine listener:
 	unloader( () => {
-		attrs( e[1], { removable: 'false' } );
 		CUI.destroyWidget( ids.button );
 		pv.panel.remove();
 		mm.removeMessageListener( 'Link:AddSearch', addListener );

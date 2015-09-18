@@ -3,6 +3,7 @@ Line, Firefox Addon:
   ✔ Ability to set tab min/max width. @done (15-08-22 23:04)
   ✔ Fix multiprocess watchWindows. @done (15-08-28 23:28)
   ✔ Move urlbar to the right, swap place with tabs. @done (15-08-29 02:18)
-  ☐ Integrate with searchbar better, tall order!
+  ✔ Integrate with searchbar better, tall order! @done (15-09-17 07:28)
     How? A few comments:
-      ☐ "The search button taking you to about:home seems cheap and lazy. Provide drop down list of what search engine to use when searching from the address bar, essentially mimicking the functionality of search bar."
+      ✔ "The search button taking you to about:home seems cheap and lazy. Provide drop down list of what search engine to use when searching from the address bar, essentially mimicking the functionality of search bar." @done (15-09-18 08:13)
+  ☐ Fix sliding mode...

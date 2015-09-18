@@ -20,18 +20,17 @@
 
 // Define all IDs used in addon:
 exports.ID = {
-	search:			'search-container',
 	urlbar:			'urlbar-container',
 	navBar:			'nav-bar',
 	navBarTarget: 	'nav-bar-customization-target',
+	overflow:		'nav-bar-overflow-button',
 	tabsBar:		'TabsToolbar',
 	tabs:			'tabbrowser-tabs',
-	titlebarPlaceholder: 'titlebar-placeholder-on-TabsToolbar-for-captions-buttons',
-	commands:		'mainCommandSet',
 	back: 			'Browser:Back',
 	forward:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',
-	searchProviders: {
+	search:			'search-container',
+	newSearch: {
 		button:		'firefox-line-search-button',
 		view:		'firefox-line-search-view',
 		attachTo:	'PanelUI-multiView'

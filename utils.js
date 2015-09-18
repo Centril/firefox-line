@@ -258,3 +258,38 @@ exports.removeChildren = removeChildren;
  */
 const appendChild = parent => parent.appendChild.bind( parent );
 exports.appendChild = appendChild;
+
+/**
+ * Moves CustomizableUI widget with id,
+ * relMove positions next to widget with relId.
+ *
+ * @param  {CustomizableUI}  CUI      The CustomizableUI.
+ * @param  {string}          id       The id of the widget to move.
+ * @param  {string}          relId    The id of the widget to move relative to.
+ * @param  {Number}          relMove  The number of steps to move, default: 0.
+ */
+const moveWidget = (CUI, id, relId, relMove = 1 ) => 
+	CUI.moveWidgetWithinArea( id, Math.max( 0, CUI.getPlacementOfWidget( relId ).position + relMove ) );
+exports.moveWidget = moveWidget;
+
+/**
+ * Executes fn with args and then returns fn.
+ *
+ * @param  {Function}  fn    The function to execute & return.
+ * @param  {...*}      args  The arguments to execute fn with.
+ * @return {Function}        The function fn.
+ */
+const exec = (fn, ...args) => { fn( ...args ); return fn; };
+exports.exec = exec;
+
+/**
+ * Computes the real width of an element including margins.
+ *
+ * @param  {Element}  e  The element to get width of.
+ * @return {Number}      The computed width.
+ */
+const realWidth = e => {
+	const style = e.currentStyle || domWindow( e ).getComputedStyle( e );
+	return e.boxObject.width + parseFloat( style.marginLeft ) + parseFloat( style.marginRight );
+}
+exports.realWidth = realWidth;

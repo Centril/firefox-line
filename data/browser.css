@@ -197,8 +197,4 @@
 	@media (max-width: 600px) and (min-width:0px) {
 		#back-button, #forward-button { display:none !important; }
 	}
-	@media (max-width: 700px) { #urlbar-container { min-width: 45ch !important; } }
-	@media (max-width: 600px) { #urlbar-container { min-width: 40ch !important; } }
-	@media (max-width: 500px) { #urlbar-container { min-width: 35ch !important; } }
-	@media (max-width: 400px) { #urlbar-container { min-width: 20ch !important; } }
 }

@@ -22,7 +22,8 @@
 const { ID }					= require( 'ids' );
 const { setupSearchButton }		= require( 'search-engine' );
 const {	sdks, nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
-		px, boundingWidth, boundingWidthPx, setWidth, insertAfter, byId,
+		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
+		insertAfter, byId, moveWidget, exec,
 		attrs, appendChild }	= require('utils');
 const [ self, sp, {Style}, {modelFor}, {when: unloader},
 		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
@@ -30,33 +31,28 @@ const [ self, sp, {Style}, {modelFor}, {when: unloader},
 	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ] );
 
 // Handle the user preferences tabMinWidth & tabMaxWidth:s.
-const tabWidthHandler = (saved, window) => [['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
-		// Deatch current attached style modification if any.
-		const detach = () => {
-			if ( !nullOrUndefined( saved[e[1]] ) ) {
-				detachFrom( saved[e[1]], window );
-				saved[e[1]] = null;
-			}
-		};
-
-		// Detach on unload.
-		unloader( detach );
-
-		// Make, apply and add listener:
-		const handleWidth = () => {
-			detach();
-
-			const pref = sp.prefs[e[1]];
-			if ( pref !== 0 ) {
-				saved[e[1]] = new Style( { source: `.tabbrowser-tab:not([pinned]) {
-					${e[0]}-width:${pref}px !important;
-				}` } );
-
-				attachTo( saved[e[1]], window );
-			}
+const tabWidthHandler = window => [['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
+	const saved = {};
+	// Deatch current attached style modification if any.
+	const detach = () => {
+		if ( !nullOrUndefined( saved[e[1]] ) ) {
+			detachFrom( saved[e[1]], window );
+			saved[e[1]] = null;
 		}
-		handleWidth();
-		sp.on( e[1], handleWidth );
+	};
+
+	// Detach on unload.
+	unloader( detach );
+
+	// Make, apply and add listener:
+	sp.on( e[1], exec( () => {
+		detach();
+		const pref = sp.prefs[e[1]];
+		if ( pref !== 0 )
+			attachTo( saved[e[1]] = new Style( { source: `.tabbrowser-tab:not([pinned]) {
+				${e[0]}-width:${pref}px !important;
+			}` } ), window );
+	} ) );
 } );
 
 // Identity Label Handler:
@@ -102,109 +98,140 @@ const identityLabelRetracter = window => {
 		updateOff = [];
 	};
 
-	const prefHandler = () => sp.prefs.retractIdentityLabel ? bind() : unbind();
-	prefHandler();
-	sp.on( 'retractIdentityLabel', prefHandler );
-}
+	sp.on( 'retractIdentityLabel', exec( () => sp.prefs.retractIdentityLabel ? bind() : unbind() ) );
+};
 
 // Impose a max-width constraint so we don't overflow!
-const imposeMaxWidth = (window, navBar, urlContainer) => {
+const imposeMaxWidth = (window, {urlContainer, navBarTarget}) => {
 	const onResize = () => {
-		const tb = byId( window, ID.tabs );
-		const tbWidth = boundingWidth( tb );
-		const tbReduce = tbWidth < 100 ? tbWidth : 100;
-
-		let children = Array.from( navBar.childNodes );
-		remove( children, urlContainer );
-		remove( children, tb );
-
-		let width = children.reduce( (a, v) => a - boundingWidth( v ), boundingWidth( navBar ) );
-		urlContainer.style.maxWidth = px( width - tbReduce );
+		//urlContainer.style.maxWidth = boundingWidthPx( navBarTarget );
 	};
 
 	setTimeout( onResize, 100 );
 	on( window, 'resize', onResize );
-}
+};
 
 const makeLine = window => {
-	const saved = {},
-		{document, gBrowser, gURLBar, CustomizableUI: CUI} = window,
-		id = byId( window );
+	const {document, gBrowser, gURLBar, CustomizableUI: CUI} = window,
+		  id = byId( window );
 
 	// Apply browser.css:
-	saved.style = new Style( { uri: './browser.css' } );
-	attachTo( saved.style, window );
+	const style = new Style( { uri: './browser.css' } );
+	attachTo( style, window );
 
 	// Handle the user preferences tabMinWidth & tabMaxWidth:s.
-	tabWidthHandler( saved, window );
+	tabWidthHandler( window );
 
 	// Get aliases to various elements:
-	const [ navBar, navBarTarget, tabsBar, urlContainer, titlebarPlaceholder,
-			searchButtonChrome, commands, backCmd, forwardCmd] =
-		  [ ID.navBar, ID.navBarTarget, ID.tabsBar, ID.urlbar, ID.titlebarPlaceholder,
-			ID.searchButton, ID.commands, ID.back, ID.forward].map( id );
+	const [ navBar, navBarTarget, tabs, tabsBar, urlContainer,
+			overflow, backCmd, forwardCmd, backForward] =
+		  [ ID.navBar, ID.navBarTarget, ID.tabs, ID.tabsBar, ID.urlbar,
+		  	ID.overflow, ID.back, ID.forward, ID.backForward].map( id );
 
-	let backForward = id( ID.backForward );
+	imposeMaxWidth( window, {navBarTarget, urlContainer} );
 
 	// Remove search bar from navBar:
 	CUI.removeWidgetFromArea( ID.search );
-
-	// Save order of elements in tabsBar to restore later:
-	saved.origTabs = Array.slice( tabsBar.childNodes );
-	const addOrder = saved.origTabs.slice( 0 );
-	const reverseAdd = addOrder.reverse();
-
-	// Move titlebar placeholder to navBar:
-	if ( !isNull( titlebarPlaceholder ) ) {
-		navBar.appendChild( titlebarPlaceholder );
-		addOrder.splice( addOrder.indexOf( titlebarPlaceholder ), 1 );
-	}
 
 	// Make tabsBar the nextSibling of navBar, not the reverse which is the case now:
 	insertAfter( tabsBar, navBar );
 
 	// Move tabsBar controls to navBar:
-	const placeTabControls = () => {
-		const notNullDo = (callback, node) => { if ( !isNull( node ) ) callback( node ) };
-		const stateF = [node => insertAfter( node, urlContainer ), node => navBarTarget.insertBefore( node, navBarTarget.firstChild )]
-			.map( f => partial( notNullDo, f ) );
-		reverseAdd.forEach( stateF[sp.prefs.urlbarRight ? 1 : 0] );
-	};
-	placeTabControls();
-	sp.on( 'urlbarRight', placeTabControls );
+	const tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
+	const moveTabControls = exec( area => {
+		const start = area === CUI.AREA_NAVBAR ? 0 : CUI.getPlacementOfWidget( ID.urlbar ).position;
+		tabWidgets.forEach( (w, i) => {
+			// Make removable, move, restore removable:
+			const node = w.forWindow( window ).node;
+			const removable = node.getAttribute( 'removable' );
+			node.setAttribute( 'removable', 'true' );
+			CUI.addWidgetToArea( w.id, area, i + start + 1 );
+			node.setAttribute( 'removable', removable );
+		} );
+	}, CUI.AREA_NAVBAR );
+	unloader( () => moveTabControls( CUI.AREA_TABSTRIP ) );
 
-	// Create a dummy backForward object if we don't have the node:
-	backForward = backForward || { boxObject: { width: 0 }, style: {} };
+	// Move to right/left when asked to:
+	sp.on( 'urlbarRight', () => {
+		const ids = [ID.urlbar, ID.newSearch.button],
+				p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
+				d = p[0].position - p[1].position,
+				r = sp.prefs.urlbarRight;
+		moveWidget( CUI, ids[0], tabWidgets[r ? tabWidgets.length - 1 : 0].id, r ? 1 : -1 );
+		if ( p[0].area === p[1].area && Math.abs( d ) === 1 )
+			moveWidget( CUI, ids[1], ids[0], d < 1 ? 1 : 0 );
+	} );
+
+	// Save order of elements in tabsBar to restore later:
+	const origTabs = Array.slice( tabsBar.childNodes );
+	origTabs.reverse().forEach( appendChild( navBar ) );
 
 	// Handle Identity Label:
 	identityLabelRetracter( window );
 
 	// Functions for handling layout modes:
-	const updateLayoutNonFlexible = focusedPref => {
-		const buttonWidth = backForward.boxObject.width / 2;
-		let buttons = 0;
-		if ( !forwardCmd.hasAttribute( "disabled" ) )
-			buttons = 2;
-		else if ( !backCmd.hasAttribute( "disabled" ) )
-			buttons = 1;
-		const offset = -buttonWidth * (2 - buttons);
-
-		// Cover up some buttons by shifting the urlbar left:
-		let baseWidth = sp.prefs[gURLBar.focused ? focusedPref : 'urlbarBlur'];
-		let width = baseWidth - buttonWidth * buttons;
-		backForward.style.marginRight = px( offset );
-		urlContainer.style.width = px( width );
-	}
-
 	const modeNonFlexible = focusedPref => {
-		urlContainer.removeAttribute( "flex" );
-		imposeMaxWidth( window, navBar, urlContainer );
-		return partial( updateLayoutNonFlexible, focusedPref );
-	}
+		// We're not flexible:
+		if ( urlContainer.hasAttribute( 'flex') )
+			urlContainer.removeAttribute( 'flex' );
 
-	saved.flex = urlContainer.getAttribute( "flex" );
+		// Fix backForward:
+		let offsetWidth = 0;
+		if ( backForward ) {
+			const buttonWidth = backForward.boxObject.width / 2,
+				  hasNot = elem => elem.hasAttribute( 'disabled' ),
+				  buttons = hasNot( forwardCmd ) ? 2 : (hasNot( backCmd ) ? 1 : 0);
+			backForward.style.marginRight = px( -buttonWidth * (2 - buttons) );
+			offsetWidth = -buttonWidth * buttons;
+		}
+
+		// Adjust width:
+		const f = gURLBar.focused;
+		setWidth( urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] - offsetWidth ) );
+
+		// If overflowing: Move overflowed items out of overflow area:
+		if ( !f && navBar.hasAttribute( 'overflowing' ) ) {
+			const widgets = [for (w of CUI.getWidgetsInArea( CUI.AREA_NAVBAR )) w.forWindow( window )];
+			const nodes	  = [for (w of widgets) if ( w.overflowed ) w.node];
+			const parent  = nodes[0].parentElement;
+
+			setTimeout( () => {
+				// Compute space & how many buttons we can move outa overflow:
+				let width = realWidth( navBarTarget ) + realWidth( overflow );
+				const reduce = arr => arr.reduce( (a, n) => a + realWidth( n ), 0 );
+				const isTabs = e => e.id === tabs.id;
+
+				// Treat tabs as "non-flex":
+				const tabsC = () => {
+					const scrollbox = document.getAnonymousElementByAttribute( tabs, 'anonid', 'arrowscrollbox' );
+					return scrollbox ? Array.from( document.getAnonymousNodes( scrollbox ) )
+						.filter( n => !n.classList.contains( 'arrowscrollbox-scrollbox' ) ) : [];
+				};
+
+				// Reduce all widths that are non-overflowed:
+				width -= reduce( tabsC().concat( Array.from( document.querySelectorAll( '.tabbrowser-tab' ) ) )
+					.concat( Array.from( navBarTarget.childNodes ).filter( n => !isTabs( n ) ) ) );
+
+				// Reduce as many overflowed as possible:
+				let added = 0;
+				for ( let n of nodes ) {
+					navBarTarget.appendChild( n )
+					width -= isTabs( n ) ? reduce( tabsC() ) : realWidth( n );
+					if ( width < 0 ) { parent.insertBefore( n, parent.firstChild ); break; }
+					if ( isTabs ) n.removeAttribute( 'overflow' );
+					added++;
+				 	n.removeAttribute( 'overflowedItem' );
+				}
+
+				if ( added === nodes.length )
+					navBar.removeAttribute( 'overflowing' );
+			}, 100 );
+		}
+	};
+
+	const flex = urlContainer.getAttribute( "flex" );
 	const modeFlexible = () => {
-		urlContainer.setAttribute( "flex", saved.flex );
+		urlContainer.setAttribute( "flex", flex );
 		urlContainer.style.position = "";
 		urlContainer.style.width = "";
 		urlContainer.style.maxWidth = "";
@@ -214,8 +241,8 @@ const makeLine = window => {
 	let layoutUpdater;
 	const layoutSwitcher = () => {
 		layoutUpdater = {
-			'fixed':	() => modeNonFlexible( 'urlbarBlur' ),
-			'sliding':	() => modeNonFlexible( 'urlbarFocused' ),
+			'fixed':	() => partial( modeNonFlexible, 'urlbarBlur' ),
+			'sliding':	() => partial( modeNonFlexible, 'urlbarFocused' ),
 			'flexible':	() => modeFlexible
 		}[sp.prefs.urlbarMode]();
 	};
@@ -245,21 +272,21 @@ const makeLine = window => {
 	// Clean up various changes when the add-on unloads:
 	unloader( () => {
 		// Remove our style:
-		detachFrom( saved.style, window );
+		detachFrom( style, window );
 
 		// Restore search-bar if user hasn't manually moved it:
 		if ( CUI.getPlacementOfWidget( ID.search ) === null ) {
-			const urlbarPlacement = CUI.getPlacementOfWidget( ID.urlbar );
-			CUI.addWidgetToArea( ID.search, urlbarPlacement.area, urlbarPlacement.position + 1 );
+			const ubp = CUI.getPlacementOfWidget( ID.urlbar );
+			CUI.addWidgetToArea( ID.search, ubp.area, ubp.position + 1 );
 		}
 
 		// Reverse: tabsBar the nextSibling of navBar:
 		insertAfter( navBar, tabsBar );
 
 		// Move stuff back to tabsBar:
-		saved.origTabs.forEach( appendChild( tabsBar ) );
+		origTabs.forEach( appendChild( tabsBar ) );
 
-		backForward.style.marginRight = "";
+		if ( backForward ) backForward.style.marginRight = "";
 		modeFlexible();
 	} );
 

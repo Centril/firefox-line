@@ -7,6 +7,7 @@
 **It solves a few graphical bugs such as:**
 + _Titlebar buttons overflow._
 + _Inability to remove/move the added search button._
++ _Buttons don't overflow anymore._
 
 **It also adds these features:**
 + The different modes of how the url-bar behaves when you focus/not it... 
@@ -16,6 +17,7 @@
 + Fully customizable widths for when focused/not.
 + The identity label can retract/slide-back when url-bar is focused and then return to normal when it is not. This provides more space to write for the URL you're about to write. An icon is still left so that you can see if it is a secure connection or not. You can disable this feature if you like.
 + Ability in preferences to modify min/max-width of tabs.
++ Search button mimics behavior of the actual searchbar button now.
 
 ## Requirements
 

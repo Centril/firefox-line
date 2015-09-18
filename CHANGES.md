@@ -3,9 +3,11 @@
 ## 1.0.0 (Not yet released)
 
 + Initial coding done, converted to addon SDK
-+ Added Flexible, Fixed modes.
-+ Added identity label retraction/slide on url-bar focus.
-+ Added preferences for modes, widths, identity label retraction.
-+ Added ability in preferences to modify min/max-width of tabs.
-+ Fixed graphical titlebar buttons overflow bugs.
-+ Fixed inability to remove/move the added search button.
++ Added: searchbar icon that can be removed and that works like the searchbar.
++ Added: Flexible, Fixed modes.
++ Added: identity label retraction/slide on url-bar focus.
++ Added: preferences for modes, widths, identity label retraction.
++ Added: ability in preferences to modify min/max-width of tabs.
++ Fixed: graphical titlebar buttons overflow bugs.
++ Fixed: inability to remove/move the added search button.
++ Fixed: one-liner works with overflow.

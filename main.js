@@ -149,7 +149,6 @@ const makeLine = window => {
 			node.setAttribute( 'removable', removable );
 		} );
 	}, CUI.AREA_NAVBAR );
-	unloader( () => moveTabControls( CUI.AREA_TABSTRIP ) );
 
 	// Move to right/left when asked to:
 	sp.on( 'urlbarRight', () => {
@@ -164,7 +163,7 @@ const makeLine = window => {
 
 	// Save order of elements in tabsBar to restore later:
 	const origTabs = Array.slice( tabsBar.childNodes );
-	origTabs.reverse().forEach( appendChild( navBar ) );
+	origTabs.forEach( appendChild( navBar ) );
 
 	// Handle Identity Label:
 	identityLabelRetracter( window );
@@ -285,6 +284,9 @@ const makeLine = window => {
 
 		// Move stuff back to tabsBar:
 		origTabs.forEach( appendChild( tabsBar ) );
+
+		// Return tab controls:
+		moveTabControls( CUI.AREA_TABSTRIP );
 
 		if ( backForward ) backForward.style.marginRight = "";
 		modeFlexible();

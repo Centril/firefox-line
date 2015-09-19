@@ -29,6 +29,7 @@ exports.ID = {
 	back: 			'Browser:Back',
 	forward:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',
+	idLabel:		'identity-icon-labels',
 	search:			'search-container',
 	newSearch: {
 		button:		'firefox-line-search-button',

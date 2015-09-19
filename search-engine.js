@@ -21,7 +21,8 @@
 const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
-const { sdks, on, px, byId, removeChildren, attrs, appendChild, moveWidget } = require('utils');
+const { sdks, on, px, byId, removeChildren, attrs, moveWidget,
+		appendChildren } = require('utils');
 const { ID } = require( 'ids' );
 const [ self, prefs, tabs, clip, {when: unloader} ] = sdks(
 	['self', 'preferences/service', 'tabs', 'clipboard', 'system/unload'] );
@@ -76,8 +77,8 @@ const _setupSearchButton = (window, manager) => {
 		engines:make( 'description', { class: 'search-panel-one-offs'	} ),
 		add:	make( 'vbox',		 { class: 'search-add-engines'		} )
 	};
-	[pv.label, pv.body].forEach( appendChild( pv.panel ) );
-	[pv.engines, pv.add].forEach( appendChild( pv.body ) );
+	appendChildren( pv.panel, [pv.label, pv.body] );
+	appendChildren( pv.body, [pv.engines, pv.add] );
 	id( ids.attachTo ).appendChild( pv.panel );
 
 	const engineCommand = event => {
@@ -143,7 +144,7 @@ const _setupSearchButton = (window, manager) => {
 
 		// Place out engines:
 		const maxCol = engines.length % 3 === 0 ? 3 : engines.length >= 16 ? 4 : 2;
-		engines.forEach( (engine, i, all) => {
+		appendChildren( pv.engines, engines.map( (engine, i, all) => {
 			const s = [i === 0, (i + 1) % maxCol === 0,
 				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
 			const b = attrs( xul( 'button' ), {
@@ -159,11 +160,11 @@ const _setupSearchButton = (window, manager) => {
 				engine: engine.name
 			} );
 			on( b, 'command', engineCommand, true );
-			pv.engines.appendChild( b );
-		} );
+			return b;
+		} ) );
 
 		// Place out "add-engines":
-		addEngineStack.reverse().forEach( ({uri, engine}, i) => {
+		appendChildren( pv.add, addEngineStack.reverse().map( ({uri, engine}, i) => {
 			const l = label( engine, "cmd_addFoundEngine" );
 			const b = attrs( xul( 'button' ), {
 				id: 'searchbar-add-engine-' + slug( engine ),
@@ -176,8 +177,8 @@ const _setupSearchButton = (window, manager) => {
 				engine: addEngineStack.length - 1 - i
 			} );
 			on( b, 'command', addCommand, true );
-			pv.add.appendChild( b );
-		} );
+			return b;
+		} ) );
 
 		// Adjust width & height:
 		const width = px( 62 * maxCol );

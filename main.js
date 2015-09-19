@@ -24,7 +24,7 @@ const { setupSearchButton }		= require( 'search-engine' );
 const {	sdks, nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
 		insertAfter, byId, moveWidget, exec,
-		attrs, appendChild }	= require('utils');
+		attrs, appendChildren }	= require('utils');
 const [ self, sp, {Style}, {modelFor}, {when: unloader},
 		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
 	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
@@ -71,14 +71,14 @@ const identityLabelRetracter = window => {
 	const resize = () => {
 		reset();
 		oldWidth = getComputedStyle( label ).width;
-		labelWidth( boundingWidthPx( label ) );
+		labelWidth( px( realWidth( label ) ) );
 		label.offsetWidth; // Force repaint
 		labelWidth( oldWidth );
 	};
 
 	const update = () => {
 		if ( gURLBar.focused ) {
-			oldWidth = boundingWidthPx( label );
+			oldWidth = px( realWidth( label ) );
 			labelWidth( px( '0' ) );
 		} else labelWidth( oldWidth );
 	};
@@ -104,7 +104,7 @@ const identityLabelRetracter = window => {
 // Impose a max-width constraint so we don't overflow!
 const imposeMaxWidth = (window, {urlContainer, navBarTarget}) => {
 	const onResize = () => {
-		//urlContainer.style.maxWidth = boundingWidthPx( navBarTarget );
+		urlContainer.style.maxWidth = px( realWidth( navBarTarget ) );
 	};
 
 	setTimeout( onResize, 100 );
@@ -162,11 +162,7 @@ const makeLine = window => {
 	} );
 
 	// Save order of elements in tabsBar to restore later:
-	const origTabs = Array.slice( tabsBar.childNodes );
-	origTabs.forEach( appendChild( navBar ) );
-
-	// Handle Identity Label:
-	identityLabelRetracter( window );
+	const origTabs = appendChildren( navBar, Array.slice( tabsBar.childNodes ) );
 
 	// Functions for handling layout modes:
 	const modeNonFlexible = focusedPref => {
@@ -265,6 +261,9 @@ const makeLine = window => {
 	// Make sure we set the right size of the urlbar on blur or focus:
 	onMulti( gURLBar, ['blur', 'focus'], updateLayout );
 
+	// Handle Identity Label:
+	identityLabelRetracter( window );
+
 	// Setup Search Button:
 	setupSearchButton( window );
 
@@ -283,7 +282,7 @@ const makeLine = window => {
 		insertAfter( navBar, tabsBar );
 
 		// Move stuff back to tabsBar:
-		origTabs.forEach( appendChild( tabsBar ) );
+		appendChildren( tabsBar, origTabs );
 
 		// Return tab controls:
 		moveTabControls( CUI.AREA_TABSTRIP );

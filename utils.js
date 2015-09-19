@@ -170,15 +170,6 @@ const watchWindows = callback => {
 exports.watchWindows = watchWindows;
 
 /**
- * Computes the bounding width of an element.
- *
- * @param {Element} element The element.
- * @return {string} The bounding width.
- */
-const boundingWidth = element => element.getBoundingClientRect().width;
-exports.boundingWidth = boundingWidth;
-
-/**
  * Adds px unit to a value.
  *
  * @param  {string} v The value.
@@ -186,15 +177,6 @@ exports.boundingWidth = boundingWidth;
  */
 const px = v => v + 'px';
 exports.px = px;
-
-/**
- * Computes the bounding width of an element and adds px unit to it.
- *
- * @param {Element}   element  The element.
- * @return {string}            The bounding width + px unit.
- */
-const boundingWidthPx = compose( px, boundingWidth );
-exports.boundingWidthPx = boundingWidthPx;
 
 /**
  * Sets the width of an element.
@@ -293,3 +275,20 @@ const realWidth = e => {
 	return e.boxObject.width + parseFloat( style.marginLeft ) + parseFloat( style.marginRight );
 }
 exports.realWidth = realWidth;
+
+/**
+ * Appends array of DOM elements in arr to parent.
+ * Returns the passed array.
+ *
+ * @param  {Element}    parent The element to append children to.
+ * @param  {Element[]}  arr    The elements to append.
+ * @return {Element[]}         The elements to append.
+ */
+const appendChildren = (parent, arr) => {
+	const doc = parent.ownerDocument;
+	const frag = doc.createDocumentFragment();
+	arr.forEach( e => frag.appendChild( e ) );
+	parent.appendChild( frag );
+	return arr;
+};
+exports.appendChildren = appendChildren;

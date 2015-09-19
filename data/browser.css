@@ -150,8 +150,7 @@
 
 	#TabsToolbar, #urlbar-search-splitter { display:none !important; }
 
-	#nav-bar, #back-button, #forward-button { height:30px; }
-	#urlbar { height:31px; }
+	#nav-bar, #urlbar { height:31px; }
 
 	.tabbrowser-arrowscrollbox { min-width:0px !important; }
 

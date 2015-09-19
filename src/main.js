@@ -19,12 +19,12 @@
 'use strict';
 
 // Import utils, search-engine, ids, SDK:
-const { ID }					= require( 'ids' );
-const { setupSearchButton }		= require( 'search-engine' );
+const { ID }					= require( './ids' );
+const { setupSearchButton }		= require( './search-engine' );
 const {	sdks, nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
 		insertAfter, byId, moveWidget, exec,
-		attrs, appendChildren }	= require('utils');
+		attrs, appendChildren }	= require('./utils');
 const [ self, sp, {Style}, {modelFor}, {when: unloader},
 		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
 	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',

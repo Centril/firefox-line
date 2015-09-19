@@ -22,8 +22,8 @@ const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
 const { sdks, on, px, byId, removeChildren, attrs, moveWidget,
-		appendChildren } = require('utils');
-const { ID } = require( 'ids' );
+		appendChildren } = require('./utils');
+const { ID } = require( './ids' );
 const [ self, prefs, tabs, clip, {when: unloader} ] = sdks(
 	['self', 'preferences/service', 'tabs', 'clipboard', 'system/unload'] );
 

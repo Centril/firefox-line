@@ -111,6 +111,8 @@ const imposeMaxWidth = (window, {urlContainer, navBarTarget}) => {
 	on( window, 'resize', onResize );
 };
 
+let tabWidgets;
+
 const makeLine = window => {
 	const {document, gBrowser, gURLBar, CustomizableUI: CUI} = window,
 		  id = byId( window );
@@ -137,18 +139,27 @@ const makeLine = window => {
 	insertAfter( tabsBar, navBar );
 
 	// Move tabsBar controls to navBar:
-	const tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
+	if ( !tabWidgets ) tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
 	const moveTabControls = exec( area => {
-		const start = area === CUI.AREA_NAVBAR ? 0 : CUI.getPlacementOfWidget( ID.urlbar ).position;
-		tabWidgets.forEach( (w, i) => {
-			// Make removable, move, restore removable:
-			const node = w.forWindow( window ).node;
-			const removable = node.getAttribute( 'removable' );
-			node.setAttribute( 'removable', 'true' );
-			CUI.addWidgetToArea( w.id, area, i + start + 1 );
-			node.setAttribute( 'removable', removable );
-		} );
+		try {
+			CUI.beginBatchUpdate();
+			const start = area === CUI.AREA_NAVBAR ? 0 : CUI.getPlacementOfWidget( ID.urlbar ).position;
+			tabWidgets.forEach( (w, i) => {
+				// If not already in area: Make removable, move, restore removable:
+				if ( area !== CUI.getPlacementOfWidget( w.id ).area ) {
+					const node = w.forWindow( window ).node;
+					const removable = node.getAttribute( 'removable' );
+					node.setAttribute( 'removable', 'true' );
+					CUI.addWidgetToArea( w.id, area, i + 0 + 1 );
+				}
+			} );
+		} finally {
+			CUI.endBatchUpdate();
+		}
 	}, CUI.AREA_NAVBAR );
+
+	// Save order of elements in tabsBar to restore later:
+	const origTabs = appendChildren( navBar, Array.slice( tabsBar.childNodes ) );
 
 	// Move to right/left when asked to:
 	sp.on( 'urlbarRight', () => {
@@ -160,9 +171,6 @@ const makeLine = window => {
 		if ( p[0].area === p[1].area && Math.abs( d ) === 1 )
 			moveWidget( CUI, ids[1], ids[0], d < 1 ? 1 : 0 );
 	} );
-
-	// Save order of elements in tabsBar to restore later:
-	const origTabs = appendChildren( navBar, Array.slice( tabsBar.childNodes ) );
 
 	// Functions for handling layout modes:
 	const modeNonFlexible = focusedPref => {

@@ -69,16 +69,17 @@ const identityLabelRetracter = window => {
 	unloader( reset );
 
 	const resize = () => {
+		if ( gURLBar.focused ) return;
 		reset();
 		oldWidth = getComputedStyle( label ).width;
-		labelWidth( px( realWidth( label ) ) );
+		labelWidth( px( realWidth( window, label ) ) );
 		label.offsetWidth; // Force repaint
 		labelWidth( oldWidth );
 	};
 
 	const update = () => {
 		if ( gURLBar.focused ) {
-			oldWidth = px( realWidth( label ) );
+			oldWidth = px( realWidth( window, label ) );
 			labelWidth( px( '0' ) );
 		} else labelWidth( oldWidth );
 	};
@@ -103,47 +104,20 @@ const identityLabelRetracter = window => {
 
 // Impose a max-width constraint so we don't overflow!
 const imposeMaxWidth = (window, {urlContainer, navBarTarget}) => {
-	const onResize = () => {
-		urlContainer.style.maxWidth = px( realWidth( navBarTarget ) );
-	};
-
+	const onResize = () => urlContainer.style.maxWidth = px( realWidth( window, navBarTarget ) );
 	setTimeout( onResize, 100 );
 	on( window, 'resize', onResize );
 };
 
 let tabWidgets;
 
-const makeLine = window => {
-	const {document, gBrowser, gURLBar, CustomizableUI: CUI} = window,
-		  id = byId( window );
-
-	// Apply browser.css:
-	const style = new Style( { uri: './browser.css' } );
-	attachTo( style, window );
-
-	// Handle the user preferences tabMinWidth & tabMaxWidth:s.
-	tabWidthHandler( window );
-
-	// Get aliases to various elements:
-	const [ navBar, navBarTarget, tabs, tabsBar, urlContainer,
-			overflow, backCmd, forwardCmd, backForward] =
-		  [ ID.navBar, ID.navBarTarget, ID.tabs, ID.tabsBar, ID.urlbar,
-		  	ID.overflow, ID.back, ID.forward, ID.backForward].map( id );
-
-	imposeMaxWidth( window, {navBarTarget, urlContainer} );
-
-	// Remove search bar from navBar:
-	CUI.removeWidgetFromArea( ID.search );
-
-	// Make tabsBar the nextSibling of navBar, not the reverse which is the case now:
-	insertAfter( tabsBar, navBar );
-
-	// Move tabsBar controls to navBar:
+// Move tabsBar controls to navBar or the reverse:
+const moveTabControls = CUI => {
 	if ( !tabWidgets ) tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
-	const moveTabControls = exec( area => {
+	return exec( area => {
 		try {
 			CUI.beginBatchUpdate();
-			const start = area === CUI.AREA_NAVBAR ? 0 : CUI.getPlacementOfWidget( ID.urlbar ).position;
+			const start = area === CUI.AREA_NAVBAR ? 0 : CUI.getPlacementOfWidget( ID.urlContainer ).position;
 			tabWidgets.forEach( (w, i) => {
 				// If not already in area: Make removable, move, restore removable:
 				const nodes = CUI.getWidget( tabWidgets[i].id ).instances.map( i => i.node );
@@ -155,13 +129,16 @@ const makeLine = window => {
 			CUI.endBatchUpdate();
 		}
 	}, CUI.AREA_NAVBAR );
+};
 
-	// Save order of elements in tabsBar to restore later:
-	const origTabs = appendChildren( navBar, Array.slice( tabsBar.childNodes ) );
-
-	// Move to right/left when asked to:
+/**
+ * Handles urlbar to the left or right mode.
+ *
+ * @param  {CustomizableUI}  CUI  The CustomizableUI.
+ */
+const urlbarRLHandler = CUI => {
 	sp.on( 'urlbarRight', () => {
-		const ids = [ID.urlbar, ID.newSearch.button],
+		const ids = [ID.urlContainer, ID.newSearch.button],
 				p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
 				d = p[0].position - p[1].position,
 				r = sp.prefs.urlbarRight;
@@ -169,82 +146,141 @@ const makeLine = window => {
 		if ( p[0].area === p[1].area && Math.abs( d ) === 1 )
 			moveWidget( CUI, ids[1], ids[0], d < 1 ? 1 : 0 );
 	} );
+};
 
-	// Functions for handling layout modes:
-	const modeNonFlexible = focusedPref => {
-		// We're not flexible:
-		if ( urlContainer.hasAttribute( 'flex') )
-			urlContainer.removeAttribute( 'flex' );
+const modeFlexible = (urlContainer, oldFlex) => {
+	urlContainer.setAttribute( "flex", oldFlex );
+	urlContainer.style.position = "";
+	urlContainer.style.width = "";
+	urlContainer.style.maxWidth = "";
+};
 
-		// Fix backForward:
-		let offsetWidth = 0;
-		if ( backForward ) {
-			const buttonWidth = backForward.boxObject.width / 2,
-				  hasNot = elem => elem.hasAttribute( 'disabled' ),
-				  buttons = hasNot( forwardCmd ) ? 2 : (hasNot( backCmd ) ? 1 : 0);
-			backForward.style.marginRight = px( -buttonWidth * (2 - buttons) );
-			offsetWidth = -buttonWidth * buttons;
-		}
+const modeNonFlexible = (window, elements, focusedPref) => {
+	const {document, gURLBar, CustomizableUI: CUI} = window;
+	const rw = partial( realWidth, window );
 
-		// Adjust width:
-		const f = gURLBar.focused;
-		setWidth( urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] - offsetWidth ) );
+	// Get aliases to various elements:
+	const [ tabs,, navBar, navBarTarget, urlContainer,
+			overflow, backForward, backCmd, forwardCmd ] = elements;
 
-		// If overflowing: Move overflowed items out of overflow area:
-		if ( !f && navBar.hasAttribute( 'overflowing' ) ) {
-			const widgets = [for (w of CUI.getWidgetsInArea( CUI.AREA_NAVBAR )) w.forWindow( window )];
-			const nodes	  = [for (w of widgets) if ( w.overflowed ) w.node];
-			const parent  = nodes[0].parentElement;
+	// We're not flexible:
+	if ( urlContainer.hasAttribute( 'flex') ) urlContainer.removeAttribute( 'flex' );
 
+	// Fix backForward:
+	let offsetWidth = 0;
+	if ( backForward ) {
+		const buttonWidth = backForward.boxObject.width / 2,
+			  hasNot = elem => elem.hasAttribute( 'disabled' ),
+			  buttons = hasNot( forwardCmd ) ? 2 : (hasNot( backCmd ) ? 1 : 0);
+		backForward.style.marginRight = px( -buttonWidth * (2 - buttons) );
+		offsetWidth = -buttonWidth * buttons;
+	}
+
+	// Adjust width:
+	const f = gURLBar.focused;
+	setWidth( urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] - offsetWidth ) );
+
+	// If overflowing: Move overflowed items out of overflow area:
+	if ( !f && navBar.hasAttribute( 'overflowing' ) ) {
+		const widgets = [for (w of CUI.getWidgetsInArea( CUI.AREA_NAVBAR )) w.forWindow( window )];
+		const nodes	  = [for (w of widgets) if ( w.overflowed ) w.node];
+		const parent  = nodes[0].parentElement;
+
+		setTimeout( () => {
+			// Compute space & how many buttons we can move outa overflow:
+			let width = rw( navBarTarget ) + rw( overflow );
+			const reduce = arr => arr.reduce( (a, n) => a + rw( n ), 0 );
+			const isTabs = e => e.id === tabs.id;
+
+			// Treat tabs as "non-flex":
+			const tabsC = () => {
+				const scrollbox = document.getAnonymousElementByAttribute( tabs, 'anonid', 'arrowscrollbox' );
+				return scrollbox ? Array.from( document.getAnonymousNodes( scrollbox ) )
+					.filter( n => !n.classList.contains( 'arrowscrollbox-scrollbox' ) ) : [];
+			};
+
+			// Reduce all widths that are non-overflowed:
+			width -= reduce( tabsC().concat( Array.from( document.querySelectorAll( '.tabbrowser-tab' ) ) )
+				.concat( Array.from( navBarTarget.childNodes ).filter( n => !isTabs( n ) ) ) );
+
+			// Reduce as many overflowed as possible:
+			let added = 0;
+			for ( let n of nodes ) {
+				navBarTarget.appendChild( n )
+				width -= isTabs( n ) ? reduce( tabsC() ) : rw( n );
+				if ( width < 0 ) { parent.insertBefore( n, parent.firstChild ); break; }
+				if ( isTabs ) n.removeAttribute( 'overflow' );
+				added++;
+			 	n.removeAttribute( 'overflowedItem' );
+			}
+
+			if ( added === nodes.length )
+				navBar.removeAttribute( 'overflowing' );
+		}, 100 );
+	}
+};
+
+const updateBackForward = updateLayout => {
+	change( "UpdateBackForwardCommands", orig => function( webnav ) {
+		orig.call( this, webnav );
+		updateLayout();
+	} );
+};
+
+const urlbarEscapeHandler = ({gURLBar, gBrowser}) => {
+	on( gURLBar, "keydown", event => {
+		if ( event.keyCode === event.DOM_VK_ESCAPE ) {
+			let {popupOpen, value} = gURLBar;
 			setTimeout( () => {
-				// Compute space & how many buttons we can move outa overflow:
-				let width = realWidth( navBarTarget ) + realWidth( overflow );
-				const reduce = arr => arr.reduce( (a, n) => a + realWidth( n ), 0 );
-				const isTabs = e => e.id === tabs.id;
-
-				// Treat tabs as "non-flex":
-				const tabsC = () => {
-					const scrollbox = document.getAnonymousElementByAttribute( tabs, 'anonid', 'arrowscrollbox' );
-					return scrollbox ? Array.from( document.getAnonymousNodes( scrollbox ) )
-						.filter( n => !n.classList.contains( 'arrowscrollbox-scrollbox' ) ) : [];
-				};
-
-				// Reduce all widths that are non-overflowed:
-				width -= reduce( tabsC().concat( Array.from( document.querySelectorAll( '.tabbrowser-tab' ) ) )
-					.concat( Array.from( navBarTarget.childNodes ).filter( n => !isTabs( n ) ) ) );
-
-				// Reduce as many overflowed as possible:
-				let added = 0;
-				for ( let n of nodes ) {
-					navBarTarget.appendChild( n )
-					width -= isTabs( n ) ? reduce( tabsC() ) : realWidth( n );
-					if ( width < 0 ) { parent.insertBefore( n, parent.firstChild ); break; }
-					if ( isTabs ) n.removeAttribute( 'overflow' );
-					added++;
-				 	n.removeAttribute( 'overflowedItem' );
-				}
-
-				if ( added === nodes.length )
-					navBar.removeAttribute( 'overflowing' );
-			}, 100 );
+				// Only return focus to the page if nothing changed since escaping
+				if  ( gURLBar.popupOpen === popupOpen && gURLBar.value === value )
+					gBrowser.selectedBrowser.focus();
+			} );
 		}
-	};
+	} );
+};
+
+const makeLine = window => {
+	const {gURLBar, CustomizableUI: CUI} = window;
+
+	// Apply browser.css:
+	const style = new Style( { uri: './browser.css' } );
+	attachTo( style, window );
+
+	// Handle the user preferences tabMinWidth & tabMaxWidth:s.
+	tabWidthHandler( window );
+
+	// Get aliases to various elements:
+	const elements = [ID.tabs, ID.tabsBar, ID.navBar, ID.navBarTarget, ID.urlContainer,
+		ID.overflow, ID.backForward, ID.backCmd, ID.forwardCmd].map( byId( window ) );
+	const [, tabsBar, navBar, navBarTarget, urlContainer,, backForward] = elements;
+
+	imposeMaxWidth( window, {navBarTarget, urlContainer} );
+
+	// Remove search bar from navBar:
+	CUI.removeWidgetFromArea( ID.search );
+
+	// Make tabsBar the nextSibling of navBar, not the reverse which is the case now:
+	insertAfter( tabsBar, navBar );
+
+	// Move tabsBar controls to navBar:
+	const moveTabCtrls = moveTabControls( CUI );
+
+	// Save order of elements in tabsBar to restore later:
+	const origTabs = appendChildren( navBar, Array.from( tabsBar.childNodes ) );
+
+	// Move to right/left when asked to:
+	urlbarRLHandler( CUI );
 
 	const flex = urlContainer.getAttribute( "flex" );
-	const modeFlexible = () => {
-		urlContainer.setAttribute( "flex", flex );
-		urlContainer.style.position = "";
-		urlContainer.style.width = "";
-		urlContainer.style.maxWidth = "";
-	};
 
 	// Make a switch of all the modes and pick the current one:
 	let layoutUpdater;
 	const layoutSwitcher = () => {
 		layoutUpdater = {
-			'fixed':	() => partial( modeNonFlexible, 'urlbarBlur' ),
-			'sliding':	() => partial( modeNonFlexible, 'urlbarFocused' ),
-			'flexible':	() => modeFlexible
+			'fixed':	() => partial( modeNonFlexible, window, elements, 'urlbarBlur' ),
+			'sliding':	() => partial( modeNonFlexible, window, elements, 'urlbarFocused' ),
+			'flexible':	() => partial( modeFlexible, urlContainer, flex )
 		}[sp.prefs.urlbarMode]();
 	};
 	layoutSwitcher();
@@ -259,10 +295,7 @@ const makeLine = window => {
 	} ) );
 
 	// Detect when the back/forward buttons change state to update UI:
-	change( window, "UpdateBackForwardCommands", orig => function( webnav ) {
-		orig.call( this, webnav );
-		updateLayout();
-	} );
+	updateBackForward();
 
 	// Make sure we set the right size of the urlbar on blur or focus:
 	onMulti( gURLBar, ['blur', 'focus'], updateLayout );
@@ -273,6 +306,9 @@ const makeLine = window => {
 	// Setup Search Button:
 	setupSearchButton( window );
 
+	// Detect escaping from the location bar when nothing changes:
+	urlbarEscapeHandler( window );
+
 	// Clean up various changes when the add-on unloads:
 	unloader( () => {
 		// Remove our style:
@@ -280,7 +316,7 @@ const makeLine = window => {
 
 		// Restore search-bar if user hasn't manually moved it:
 		if ( CUI.getPlacementOfWidget( ID.search ) === null ) {
-			const ubp = CUI.getPlacementOfWidget( ID.urlbar );
+			const ubp = CUI.getPlacementOfWidget( ID.urlContainer );
 			CUI.addWidgetToArea( ID.search, ubp.area, ubp.position + 1 );
 		}
 
@@ -291,22 +327,10 @@ const makeLine = window => {
 		appendChildren( tabsBar, origTabs );
 
 		// Return tab controls:
-		moveTabControls( CUI.AREA_TABSTRIP );
+		moveTabCtrls( CUI.AREA_TABSTRIP );
 
 		if ( backForward ) backForward.style.marginRight = "";
-		modeFlexible();
-	} );
-
-	// Detect escaping from the location bar when nothing changes:
-	on( gURLBar, "keydown", event => {
-		if ( event.keyCode === event.DOM_VK_ESCAPE ) {
-			let {popupOpen, value} = gURLBar;
-			setTimeout( () => {
-				// Only return focus to the page if nothing changed since escaping
-				if  ( gURLBar.popupOpen === popupOpen && gURLBar.value === value )
-					gBrowser.selectedBrowser.focus();
-			} );
-		}
+		modeFlexible( urlContainer, flex );
 	} );
 };
 

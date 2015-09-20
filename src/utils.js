@@ -86,7 +86,7 @@ exports.nullOrUndefined = nullOrUndefined;
  * @param  {string} prop   The property to change value of.
  * @param  {*}      val    The value to set.
  */
-const change = (window, obj, prop, val) => {
+const change = (obj, prop, val) => {
 	let orig = obj[prop];
 	obj[prop] = voc( val, orig );
 	unloader( () => obj[prop] = orig );
@@ -283,8 +283,8 @@ exports.exec = exec;
  * @param  {Element}  e  The element to get width of.
  * @return {Number}      The computed width.
  */
-const realWidth = e => {
-	const style = e.currentStyle || domWindow( e ).getComputedStyle( e );
+const realWidth = (window, e) => {
+	const style = e.currentStyle || window.getComputedStyle( e );
 	return e.boxObject.width + parseFloat( style.marginLeft ) + parseFloat( style.marginRight );
 }
 exports.realWidth = realWidth;

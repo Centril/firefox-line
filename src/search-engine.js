@@ -211,7 +211,7 @@ const _setupSearchButton = (window, manager) => {
 	} );
 
 	// Move button to after urlbar:
-	moveWidget( CUI, widget.id, ID.urlbar );
+	moveWidget( CUI, widget.id, ID.urlContainer );
 
 	// Unloader: destroy widget & panel, remove addEngine listener:
 	unloader( () => {

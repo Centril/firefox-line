@@ -20,14 +20,14 @@
 
 // Define all IDs used in addon:
 exports.ID = {
-	urlbar:			'urlbar-container',
+	urlContainer:	'urlbar-container',
 	navBar:			'nav-bar',
 	navBarTarget: 	'nav-bar-customization-target',
 	overflow:		'nav-bar-overflow-button',
 	tabsBar:		'TabsToolbar',
 	tabs:			'tabbrowser-tabs',
-	back: 			'Browser:Back',
-	forward:		'Browser:Forward',
+	backCmd: 		'Browser:Back',
+	forwardCmd:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',
 	idLabel:		'identity-icon-labels',
 	search:			'search-container',

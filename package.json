@@ -8,7 +8,7 @@
 	"engines": {
 		"firefox": ">=38.0a1"
 	},
-	"permissions": {"private-browsing": true},
+	"permissions": {"private-browsing": true, "multiprocess": true},
 	"preferences": [
 	{
 		"name": "urlbarMode",

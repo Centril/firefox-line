@@ -140,10 +140,10 @@ const urlbarRLHandler = CUI => {
 	sp.on( 'urlbarRight', () => {
 		const ids = [ID.urlContainer, ID.newSearch.button],
 				p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
-				d = p[0].position - p[1].position,
+				d = p[0].position - (p[1] ? p[1].position : 0),
 				r = sp.prefs.urlbarRight;
 		moveWidget( CUI, ids[0], tabWidgets[r ? tabWidgets.length - 1 : 0].id, r ? 1 : -1 );
-		if ( p[0].area === p[1].area && Math.abs( d ) === 1 )
+		if ( Math.abs( d ) === 1 && p[0].area === p[1].area )
 			moveWidget( CUI, ids[1], ids[0], d < 1 ? 1 : 0 );
 	} );
 };

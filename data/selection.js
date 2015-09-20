@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 const __safeGetRange = (selection, rangeNumber) => {
 	try {
@@ -22,7 +22,7 @@ const __getElementWithSelection = () => {
 	try {
 		const element = document.activeElement;
 		const { value, selectionStart: ss, selectionEnd: se } = element;
-		const hasSelection = typeof value === "string" && !isNaN( ss ) && !isNaN( se ) && ss !== se;
+		const hasSelection = typeof value === 'string' && !isNaN( ss ) && !isNaN( se ) && ss !== se;
 		return hasSelection ? element : null;
 	} catch ( err ) {
 		return null;

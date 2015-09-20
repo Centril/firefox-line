@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-@-moz-document url-prefix("chrome://browser/content/browser.xul") {
+@-moz-document url-prefix('chrome://browser/content/browser.xul') {
 	#nav-bar-customization-target > #firefox-line-search-button { width: 32px; }
 
 	#firefox-line-search-button > .toolbarbutton-icon {
@@ -33,7 +33,7 @@
 		margin-inline-start: 4px !important;
 	}
 	#firefox-line-search-button > .toolbarbutton-icon {
-		list-style-image: url("chrome://browser/skin/search-indicator.png");
+		list-style-image: url('chrome://browser/skin/search-indicator.png');
 		-moz-image-region: rect(0px, 20px, 20px, 0px);
 	}
 	#firefox-line-search-button:hover > .toolbarbutton-icon {
@@ -56,7 +56,7 @@
 		height: 32px;
 		margin: 0px;
 		padding: 0px;
-		background: transparent url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAWCAYAAAABxvaqAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3gofECQNNVW2/AAAABBJREFUGFdjOHPmzH8GehEA/KpKg9YTf4AAAAAASUVORK5CYII=") no-repeat scroll right center;
+		background: transparent url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAWCAYAAAABxvaqAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3gofECQNNVW2/AAAABBJREFUGFdjOHPmzH8GehEA/KpKg9YTf4AAAAAASUVORK5CYII=') no-repeat scroll right center;
 	}
 	#firefox-line-search-view .searchbar-engine-one-off-item:hover {
 		background-color: #39F;
@@ -98,7 +98,7 @@
 	#firefox-line-search-view .addengine-item:hover { background-color: #39F; }
 	#firefox-line-search-view .addengine-item:first-of-type { border-top: 1px solid #CCC; }
 	#firefox-line-search-view .addengine-item > .button-box > .button-icon {
-		-moz-binding: url("chrome://browser/content/urlbarBindings.xml#addengine-icon");
+		-moz-binding: url('chrome://browser/content/urlbarBindings.xml#addengine-icon');
 		display: -moz-stack;
 		margin-left:-5px;
 		margin-right:10px;
@@ -108,11 +108,11 @@
 		width: 16px;
 		height: 16px;
 		margin: -7px -9px 7px 9px;
-		list-style-image: url("chrome://browser/skin/badge-add-engine.png");
+		list-style-image: url('chrome://browser/skin/badge-add-engine.png');
 	}
 }
 
-@-moz-document url-prefix("chrome://browser/content/browser.xul") {
+@-moz-document url-prefix('chrome://browser/content/browser.xul') {
 	/* Start: Copied from #TabsToolbar*/
 	[devtoolstheme]:root #navigator-toolbox > toolbar#nav-bar:not(#TabsToolbar):not(#toolbar-menubar) {
 		background-color: var(--chrome-background-color) !important;
@@ -131,20 +131,20 @@
 
 	#nav-bar #new-tab-button { width: 26px; }
 	.tabs-newtab-button, #nav-bar #new-tab-button, #nav-bar toolbarpaletteitem > #new-tab-button {
-		list-style-image: url("chrome://browser/skin/tabbrowser/newtab.png") !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/newtab.png') !important;
 		-moz-image-region: auto !important;
 	}
 	#nav-bar[brighttext] .tabs-newtab-button, #nav-bar[brighttext] #new-tab-button, #nav-bar[brighttext] toolbarpaletteitem > #new-tab-button {
-		list-style-image: url("chrome://browser/skin/tabbrowser/newtab-inverted.png") !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/newtab-inverted.png') !important;
 	}
 	#nav-bar[brighttext] #alltabs-button, #nav-bar[brighttext] toolbarpaletteitem > #alltabs-button {
-		list-style-image: url("chrome://browser/skin/toolbarbutton-dropdown-arrow-inverted.png") !important;
+		list-style-image: url('chrome://browser/skin/toolbarbutton-dropdown-arrow-inverted.png') !important;
 	}
 	#nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-up, #nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-down {
-		list-style-image: url("chrome://browser/skin/tabbrowser/tab-arrow-left-inverted.png") !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/tab-arrow-left-inverted.png') !important;
 	}
 	#nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-up, #nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-down {
-		list-style-image: url("chrome://browser/skin/tabbrowser/tab-arrow-left-inverted.png") !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/tab-arrow-left-inverted.png') !important;
 	}
 	/* End: Copied from #TabsToolbar*/
 
@@ -174,7 +174,7 @@
 	}
 
 	/* Reduce space between caption buttons and menu button: */
-	.titlebar-placeholder[type="caption-buttons"] { margin-left:0px; }
+	.titlebar-placeholder[type='caption-buttons'] { margin-left:0px; }
 
 	.tabbrowser-tab:not([pinned]) { width:auto !important; }
 
@@ -184,7 +184,7 @@
 	}
 }
 
-@-moz-document url-prefix("chrome://browser/content/browser.xul") {
+@-moz-document url-prefix('chrome://browser/content/browser.xul') {
 	@media (max-width: 700px) and (min-width:0px) {
 		#identity-box {
 			padding-right: 5px !important;

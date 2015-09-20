@@ -40,7 +40,7 @@ const enginesManager = window => {
 		add: (uri, cb = null) => search.addEngine( uri, 1, '', false, cb ),
 		remove: e => search.removeEngine( e ),
 		get engines() { return search.getVisibleEngines() },
-		get currentEngine() { return search.currentEngine || { name: "", uri: null } },
+		get currentEngine() { return search.currentEngine || { name: '', uri: null } },
 	};
 };
 
@@ -53,7 +53,7 @@ const _setupSearchButton = (window, manager) => {
 			KeyboardEvent, MouseEvent,
 			gURLBar: ub } = window,
 		  ids = ID.newSearch,
-		  trimIf = val => (val || "").trim(),
+		  trimIf = val => (val || '').trim(),
 		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
 		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
 		  make = (d, e, a) => attrs( xul( d, e ), a );
@@ -78,20 +78,20 @@ const _setupSearchButton = (window, manager) => {
 			// Where should we open link?
 			const newTabPref = prefs.get( 'browser.search.openintab', true );
 			if ( ( (event instanceof KeyboardEvent) && event.altKey) ^ newTabPref )
-				return "tab";
+				return 'tab';
 			else if ( (event instanceof MouseEvent) && (event.button === 1 || event.ctrlKey) )
-				return "tab-background";
+				return 'tab-background';
 			else
 				return whereToOpenLink( event, false, true );
 		};
 
 		const open = (data) => {
 			// Finally, make our search in the given tab.
-			const submission = engine.getSubmission( data, null, "searchbar" );
+			const submission = engine.getSubmission( data, null, 'searchbar' );
 			const where = computeWhere();
-			openUILinkIn( submission.uri.spec, where === "tab-background" ? "tab" : where, {
+			openUILinkIn( submission.uri.spec, where === 'tab-background' ? 'tab' : where, {
 				postData: submission.postData,
-				inBackground: where === "tab-background"
+				inBackground: where === 'tab-background'
 			} );
 			hidePanel();
 		};
@@ -150,16 +150,16 @@ const _setupSearchButton = (window, manager) => {
 				tooltiptext: label( engine, 'searchtip' ),
 				label: engine.name,
 				image: image( engine ),
-				width: "59",
+				width: '59',
 				engine: engine.name
 			} );
 			on( b, 'command', engineCommand, true );
 			return b;
 		} ) );
 
-		// Place out "add-engines":
+		// Place out 'add-engines':
 		appendChildren( pv.add, addEngineStack.reverse().map( ({uri, engine}, i) => {
-			const l = label( engine, "cmd_addFoundEngine" );
+			const l = label( engine, 'cmd_addFoundEngine' );
 			const b = make( doc, 'button', {
 				id: 'searchbar-add-engine-' + slug( engine ),
 				class: 'addengine-item',

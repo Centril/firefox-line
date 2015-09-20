@@ -30,7 +30,7 @@ const [ self, sp, {Style}, {modelFor}, {when: unloader},
 	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
 	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ] );
 
-require( 'chrome' ).Cu.import("resource://gre/modules/WindowDraggingUtils.jsm");
+require( 'chrome' ).Cu.import( 'resource://gre/modules/WindowDraggingUtils.jsm' );
 /**
  * Ensures navBar is draggable, behaving like tabsBar:
  * Doesn't work in Private Windows otherwise...
@@ -72,7 +72,7 @@ const identityLabelRetracter = window => {
 	// Get some resources:
 	const {getComputedStyle, gURLBar} = window;
 	const windowModel = modelFor( window );
-	const label = byId( window, "identity-icon-labels" );
+	const label = byId( window, ID.idLabel );
 	const labelWidth = setWidth( label );
 	let oldWidth;
 	let resizeOff = noop, updateOff = [];
@@ -161,10 +161,10 @@ const urlbarRLHandler = CUI => {
 };
 
 const modeFlexible = (urlContainer, oldFlex) => {
-	urlContainer.setAttribute( "flex", oldFlex );
-	urlContainer.style.position = "";
-	urlContainer.style.width = "";
-	urlContainer.style.maxWidth = "";
+	urlContainer.setAttribute( 'flex', oldFlex );
+	urlContainer.style.position = '';
+	urlContainer.style.width = '';
+	urlContainer.style.maxWidth = '';
 };
 
 const modeNonFlexible = (window, elements, focusedPref) => {
@@ -204,7 +204,7 @@ const modeNonFlexible = (window, elements, focusedPref) => {
 			const reduce = arr => arr.reduce( (a, n) => a + rw( n ), 0 );
 			const isTabs = e => e.id === tabs.id;
 
-			// Treat tabs as "non-flex":
+			// Treat tabs as 'non-flex':
 			const tabsC = () => {
 				const scrollbox = document.getAnonymousElementByAttribute( tabs, 'anonid', 'arrowscrollbox' );
 				return scrollbox ? Array.from( document.getAnonymousNodes( scrollbox ) )
@@ -233,14 +233,14 @@ const modeNonFlexible = (window, elements, focusedPref) => {
 };
 
 const updateBackForward = updateLayout => {
-	change( "UpdateBackForwardCommands", orig => function( webnav ) {
+	change( 'UpdateBackForwardCommands', orig => function( webnav ) {
 		orig.call( this, webnav );
 		updateLayout();
 	} );
 };
 
 const urlbarEscapeHandler = ({gURLBar, gBrowser}) => {
-	on( gURLBar, "keydown", event => {
+	on( gURLBar, 'keydown', event => {
 		if ( event.keyCode === event.DOM_VK_ESCAPE ) {
 			let {popupOpen, value} = gURLBar;
 			setTimeout( () => {
@@ -286,7 +286,7 @@ const makeLine = window => {
 	// Move to right/left when asked to:
 	urlbarRLHandler( CUI );
 
-	const flex = urlContainer.getAttribute( "flex" );
+	const flex = urlContainer.getAttribute( 'flex' );
 
 	// Make a switch of all the modes and pick the current one:
 	let layoutUpdater;
@@ -343,7 +343,7 @@ const makeLine = window => {
 		// Return tab controls:
 		moveTabCtrls( CUI.AREA_TABSTRIP );
 
-		if ( backForward ) backForward.style.marginRight = "";
+		if ( backForward ) backForward.style.marginRight = '';
 		modeFlexible( urlContainer, flex );
 	} );
 };

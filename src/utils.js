@@ -21,7 +21,7 @@
 /**
  * Returns a list of SDKs.
  *
- * @param  {String[]}  list  A string list of sdks without "sdk/" path prefix.
+ * @param  {String[]}  list  A string list of sdks without 'sdk/' path prefix.
  * @return {Object[]}        The SDKs.
  */
 const sdks = list => list.map( v => require( 'sdk/' + v ) );
@@ -57,16 +57,6 @@ exports.noop = noop;
  */
 const isWindow = window => !isUndefined( window.window ) && !isUndefined( window.window.window );
 exports.isWindow = isWindow;
-
-/**
- * Returns the window object from a given Element belonging to that window.
- * It returns itself if the object passed was a Window.
- *
- * @param  {Element|Window}  element  The element to get window of, or a window.
- * @return {Window}                   The window of the element or itself if a window was passed.
- */
-const domWindow = element => isWindow( element ) ? element : element.ownerDocument.defaultView;
-exports.domWindow = domWindow;
 
 /**
  * Returns true if the value v is either null or undefined.
@@ -284,8 +274,8 @@ exports.exec = exec;
  * @return {Number}      The computed width.
  */
 const realWidth = (window, e) => {
-	const style = e.currentStyle || window.getComputedStyle( e );
-	return e.boxObject.width + parseFloat( style.marginLeft ) + parseFloat( style.marginRight );
+	const {marginLeft, marginRight} = e.currentStyle || window.getComputedStyle( e );
+	return e.boxObject.width + parseFloat( marginLeft ) + parseFloat( marginRight );
 }
 exports.realWidth = realWidth;
 
@@ -306,7 +296,7 @@ const appendChildren = (parent, arr) => {
 };
 exports.appendChildren = appendChildren;
 
-const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+const nsXUL = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
 /**
  * Creates a xul namespaced element.
  *

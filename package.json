@@ -13,7 +13,7 @@
 	{
 		"name": "urlbarMode",
 		"title": "Url-bar behaviour.",
-		"description": "Behaviour of the url-bar when focused or not. Fixed: Fixed size, Sliding: Grows when focused, Flexible: Uses space not claimed by tabs",
+		"description": "Behaviour of the url-bar when focused or not. Fixed: Fixed size, Sliding: Grows when focused, Flexible: Uses space not claimed by tabs.",
 		"type": "radio",
 		"value": "sliding",
 		"options": [{

@@ -24,8 +24,8 @@ const MAX_ADD_ENGINES = 5;
 const { sdks, on, px, byId, removeChildren, attrs, xul, moveWidget, entries,
 		appendChildren } = require('./utils');
 const { ID } = require( './ids' );
-const [ self, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
-	['self', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
+const [ self, {get: _}, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
+	['self', 'l10n', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
 
 const enginesManager = window => {
 	// The services we are using: (nsIObserverService, nsIBrowserSearchService)
@@ -208,8 +208,8 @@ const _setupSearchButton = (window, manager) => {
 		type: 'view',
 		viewId: ids.view,
 		defaultArea: CUI.AREA_NAVBAR,
-		label: 'Search',
-		tooltiptext: 'Search with providers.',
+		label: _( 'search_button_label' ),
+		tooltiptext: _( 'search_button_tooltiptext' ),
 		onBeforeCreated: create,
 		onViewShowing: updater,
 		onClick: attach

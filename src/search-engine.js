@@ -68,6 +68,8 @@ const _setupSearchButton = (window, manager) => {
 	} } );
 	mm.addMessageListener( 'Link:AddSearch', addListener );
 
+	const hidePanel = () => CUI.hidePanelForNode( pv.body );
+
 	const engineCommand = event => {
 		// Handle clicks on an engine, get engine first:
 		const engine = manager.byName( event.target.getAttribute( 'engine' ) );
@@ -91,6 +93,7 @@ const _setupSearchButton = (window, manager) => {
 				postData: submission.postData,
 				inBackground: where === "tab-background"
 			} );
+			hidePanel();
 		};
 
 		// Get urlbar value if any:
@@ -112,8 +115,10 @@ const _setupSearchButton = (window, manager) => {
 		} else open( val );
 	};
 
-	const addCommand = event => manager.add( addEngineStack.splice(
-		parseInt( event.target.getAttribute( 'engine' ) ), 1 )[0].uri );
+	const addCommand = ({target}) => {
+		manager.add( addEngineStack.splice( parseInt( target.getAttribute( 'engine' ) ), 1 )[0].uri );
+		hidePanel();
+	}
 
 	const updater = event => {
 		const doc = event.target.ownerDocument;

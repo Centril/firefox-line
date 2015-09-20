@@ -23,7 +23,7 @@ const { ID }					= require( './ids' );
 const { setupSearchButton }		= require( './search-engine' );
 const {	sdks, nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
-		insertAfter, byId, moveWidget, exec,
+		insertAfter, byId, moveWidget, exec, setAttr,
 		attrs, appendChildren }	= require('./utils');
 const [ self, sp, {Style}, {modelFor}, {when: unloader},
 		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
@@ -146,12 +146,10 @@ const makeLine = window => {
 			const start = area === CUI.AREA_NAVBAR ? 0 : CUI.getPlacementOfWidget( ID.urlbar ).position;
 			tabWidgets.forEach( (w, i) => {
 				// If not already in area: Make removable, move, restore removable:
-				if ( area !== CUI.getPlacementOfWidget( w.id ).area ) {
-					const node = w.forWindow( window ).node;
-					const removable = node.getAttribute( 'removable' );
-					node.setAttribute( 'removable', 'true' );
-					CUI.addWidgetToArea( w.id, area, i + 0 + 1 );
-				}
+				const nodes = CUI.getWidget( tabWidgets[i].id ).instances.map( i => i.node );
+				const r = nodes.map( partial( setAttr, 'removable', true ) );
+				CUI.addWidgetToArea( w.id, area, i + 0 + 1 );
+				nodes.forEach( (n, i) => n.setAttribute( 'removable', r[i] ) );
 			} );
 		} finally {
 			CUI.endBatchUpdate();

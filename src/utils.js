@@ -89,7 +89,7 @@ exports.nullOrUndefined = nullOrUndefined;
 const change = (window, obj, prop, val) => {
 	let orig = obj[prop];
 	obj[prop] = voc( val, orig );
-	unloader( () => obj[prop] = orig, window );
+	unloader( () => obj[prop] = orig );
 }
 exports.change = change;
 
@@ -221,6 +221,21 @@ const methodKV = curry( (method, obj, props) => {
 exports.methodKV = methodKV;
 
 exports.attrs = methodKV( 'setAttribute' );
+
+/**
+ * Sets the value of an attribute and returns the old value.
+ *
+ * @param  {string}   attr  The attribute name.
+ * @param  {*}        val   The new attribute value.
+ * @param  {Element}  elem  The element to set attribute on.
+ * @return {*}              The old attribute value.
+ */
+const setAttr = (attr, val, elem) => {
+	const old = elem.getAttribute( 'removable' );
+	elem.setAttribute( 'removable', val );
+	return old;
+};
+exports.setAttr = setAttr;
 
 /**
  * Removes all the children of elem.

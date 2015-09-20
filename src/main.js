@@ -30,6 +30,18 @@ const [ self, sp, {Style}, {modelFor}, {when: unloader},
 	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
 	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ] );
 
+require( 'chrome' ).Cu.import("resource://gre/modules/WindowDraggingUtils.jsm");
+/**
+ * Ensures navBar is draggable, behaving like tabsBar:
+ * Doesn't work in Private Windows otherwise...
+ * Keep this in memory so it doesn't get flagged for GC.
+ *
+ * @param  {Window}   window  DOM Window.
+ * @param  {Element}  navBar  #nav-bar Element.
+ */
+const fixNavBarDrag = (window, navBar) =>
+	window.windowDraggingElement = new WindowDraggingElement( navBar );
+
 // Handle the user preferences tabMinWidth & tabMaxWidth:s.
 const tabWidthHandler = window => [['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
 	const saved = {};
@@ -254,6 +266,8 @@ const makeLine = window => {
 	const elements = [ID.tabs, ID.tabsBar, ID.navBar, ID.navBarTarget, ID.urlContainer,
 		ID.overflow, ID.backForward, ID.backCmd, ID.forwardCmd].map( byId( window ) );
 	const [, tabsBar, navBar, navBarTarget, urlContainer,, backForward] = elements;
+
+	fixNavBarDrag( window, navBar );
 
 	imposeMaxWidth( window, {navBarTarget, urlContainer} );
 

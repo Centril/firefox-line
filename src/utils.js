@@ -18,6 +18,12 @@
  */
 'use strict';
 
+/**
+ * Returns a list of SDKs.
+ *
+ * @param  {String[]}  list  A string list of sdks without "sdk/" path prefix.
+ * @return {Object[]}        The SDKs.
+ */
 const sdks = list => list.map( v => require( 'sdk/' + v ) );
 exports.sdks = sdks;
 
@@ -61,14 +67,6 @@ exports.isWindow = isWindow;
  */
 const domWindow = element => isWindow( element ) ? element : element.ownerDocument.defaultView;
 exports.domWindow = domWindow;
-
-/**
- * Returns all the open normal (navigator:browser) windows (chrome mode).
- *
- * @return {Window[]}  Array of all open windows.
- */
-const getAllWindows = () => window_utils.windows( 'navigator:browser', {includePrivate: true} );
-exports.getAllWindows = getAllWindows;
 
 /**
  * Returns true if the value v is either null or undefined.
@@ -158,11 +156,10 @@ exports.onMulti = onMulti;
  * @param {function} callback: 1-parameter function that gets a browser window.
  */
 const watchWindows = callback => {
-	// Change: Not running on load, no need.
 	// Add functionality to existing windows
-	getAllWindows().forEach( callback );
+	window_utils.windows( 'navigator:browser', {includePrivate: true} ).forEach( callback );
 
-	// Watch for new browser windows opening then wait for it to load:
+	// Watch for new browser windows opening:
 	const listener = window => callback( viewFor( window ) );
 	windows.on( 'open', listener );
 	unloader( () => windows.off( 'open', listener ) );
@@ -200,11 +197,12 @@ exports.insertAfter = insertAfter;
 /**
  * Curried shortcut for getElementById.
  *
- * @param  {Window}	 window   The Window DOM object.
- * @param  {string}  id       The unique ID of the DOM Element.
- * @return 					  The DOM element that has the unique ID.
+ * @param  {Window|Document}  window  The Window or Document object.
+ * @param  {string}           id      The unique ID of the DOM Element.
+ * @return 					          The DOM element that has the unique ID.
  */
-const byId = curry( (window, id) => window.document.getElementById( id ) );
+const byId = curry( (window, id) => (isWindow( window ) ? window.document : window)
+	.getElementById( id ) );
 exports.byId = byId;
 
 /**
@@ -292,3 +290,23 @@ const appendChildren = (parent, arr) => {
 	return arr;
 };
 exports.appendChildren = appendChildren;
+
+const nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+/**
+ * Creates a xul namespaced element.
+ *
+ * @param  {Document}  document The document.
+ * @param  {string}    elem     The string tag.
+ * @return {Element}            The created element.
+ */
+const xul = (document, elem) => document.createElementNS( nsXUL, elem );
+exports.xul = xul;
+
+/**
+ * Returns a generator expression for an object returning [K, V] for each iteration.
+ *
+ * @param  {Object}     obj  The object to iterate.
+ * @return {Generator}       The expression.
+ */
+const entries = obj => (for (key of Object.keys( obj )) [key, obj[key]]);
+exports.entries = entries;

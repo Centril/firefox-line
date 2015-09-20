@@ -21,11 +21,11 @@
 const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
-const { sdks, on, px, byId, removeChildren, attrs, moveWidget,
+const { sdks, on, px, byId, removeChildren, attrs, xul, moveWidget, entries,
 		appendChildren } = require('./utils');
 const { ID } = require( './ids' );
-const [ self, prefs, tabs, clip, {when: unloader} ] = sdks(
-	['self', 'preferences/service', 'tabs', 'clipboard', 'system/unload'] );
+const [ self, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
+	['self', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
 
 const enginesManager = window => {
 	// The services we are using: (nsIObserverService, nsIBrowserSearchService)
@@ -44,6 +44,9 @@ const enginesManager = window => {
 	};
 };
 
+// Holds panelview items for all windows.
+let pv = {};
+
 const _setupSearchButton = (window, manager) => {
 	const {	CustomizableUI: CUI, Components: { utils: cu }, Services: { strings, search, mm },
 			document, whereToOpenLink, openUILinkIn,
@@ -53,9 +56,7 @@ const _setupSearchButton = (window, manager) => {
 		  trimIf = val => (val || "").trim(),
 		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
 		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
-		  id = byId( window ),
-		  nsXUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul",
-		  xul = elem => document.createElementNS( nsXUL, elem );
+		  make = (d, e, a) => attrs( xul( d, e ), a );
 
 	let addEngineStack = [];
 	const addListener = msg => manager.add( msg.data.engine.href, { onSuccess( e ) {
@@ -66,20 +67,6 @@ const _setupSearchButton = (window, manager) => {
 		if ( addEngineStack.length > MAX_ADD_ENGINES ) addEngineStack.shift();
 	} } );
 	mm.addMessageListener( 'Link:AddSearch', addListener );
-
-	// Construct our panelview:
-	const make = (e, a) => attrs( xul( e ), a );
-	const pv = {
-		panel:	make( 'panelview',	 { id: ids.view, flex: '1'			} ),
-		body:	make( 'vbox',		 { class: 'panel-subview-body'		} ),
-		label:	make( 'label',		 { class: 'panel-subview-header',
-									   value: 'Search with providers'	} ),
-		engines:make( 'description', { class: 'search-panel-one-offs'	} ),
-		add:	make( 'vbox',		 { class: 'search-add-engines'		} )
-	};
-	appendChildren( pv.panel, [pv.label, pv.body] );
-	appendChildren( pv.body, [pv.engines, pv.add] );
-	id( ids.attachTo ).appendChild( pv.panel );
 
 	const engineCommand = event => {
 		// Handle clicks on an engine, get engine first:
@@ -128,7 +115,9 @@ const _setupSearchButton = (window, manager) => {
 	const addCommand = event => manager.add( addEngineStack.splice(
 		parseInt( event.target.getAttribute( 'engine' ) ), 1 )[0].uri );
 
-	const updater = () => {
+	const updater = event => {
+		const doc = event.target.ownerDocument;
+
 		removeChildren( pv.engines );
 		removeChildren( pv.add );
 
@@ -147,7 +136,7 @@ const _setupSearchButton = (window, manager) => {
 		appendChildren( pv.engines, engines.map( (engine, i, all) => {
 			const s = [i === 0, (i + 1) % maxCol === 0,
 				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
-			const b = attrs( xul( 'button' ), {
+			const b = make( doc, 'button', {
 				id: 'searchpanel-engine-one-off-item-' + slug( engine ),
 				class: ['searchbar-engine-one-off-item']
 					.concat( ['current', 'last-of-row', 'last-row'].filter( (c, i) => s[i] ) )
@@ -166,7 +155,7 @@ const _setupSearchButton = (window, manager) => {
 		// Place out "add-engines":
 		appendChildren( pv.add, addEngineStack.reverse().map( ({uri, engine}, i) => {
 			const l = label( engine, "cmd_addFoundEngine" );
-			const b = attrs( xul( 'button' ), {
+			const b = make( doc, 'button', {
 				id: 'searchbar-add-engine-' + slug( engine ),
 				class: 'addengine-item',
 				tooltiptext: l,
@@ -190,21 +179,41 @@ const _setupSearchButton = (window, manager) => {
 		} );
 	};
 
+	const attach = doc => byId( isUndefined( doc.target ) ? doc : doc.target.ownerDocument,
+		ids.attachTo ).appendChild( pv.panel );
+
+	const create = doc => {
+		for ( let [k, e] of entries( {
+			panel:	['panelview',	{ id: ids.view, flex: '1'			}],
+			body:	['vbox',		{ class: 'panel-subview-body'		}],
+			label:	['label',		{ class: 'panel-subview-header',
+									  value: 'Search with providers'	}],
+			engines:['description', { class: 'search-panel-one-offs'	}],
+			add:	['vbox',		{ class: 'search-add-engines'		}]
+		} ) ) pv[k] = make( doc, ...e );
+		appendChildren( pv.panel, [pv.label, pv.body] );
+		appendChildren( pv.body, [pv.engines, pv.add] );
+		attach( doc );
+	};
+
  	// Create the widget:
-	const widget = CUI.createWidget( {
+	const tryW = CUI.getWidget( ids.button );
+	const widget = tryW.areaType ? tryW : CUI.createWidget( {
 		id: ids.button,
 		type: 'view',
 		viewId: ids.view,
 		defaultArea: CUI.AREA_NAVBAR,
 		label: 'Search',
 		tooltiptext: 'Search with providers.',
-		onViewShowing: updater
+		onBeforeCreated: create,
+		onViewShowing: updater,
+		onClick: attach
 	} );
 
-	// Make urlbar removable and move button to after urlbar:
+	// Move button to after urlbar:
 	moveWidget( CUI, widget.id, ID.urlbar );
 
-	// Unloader: reverse removable, destroy widget & panel, remove addEngine listener:
+	// Unloader: destroy widget & panel, remove addEngine listener:
 	unloader( () => {
 		CUI.destroyWidget( ids.button );
 		pv.panel.remove();

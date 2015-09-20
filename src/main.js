@@ -148,17 +148,15 @@ const moveTabControls = CUI => {
  *
  * @param  {CustomizableUI}  CUI  The CustomizableUI.
  */
-const urlbarRLHandler = CUI => {
-	sp.on( 'urlbarRight', () => {
-		const ids = [ID.urlContainer, ID.newSearch.button],
-				p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
-				d = p[0].position - (p[1] ? p[1].position : 0),
-				r = sp.prefs.urlbarRight;
-		moveWidget( CUI, ids[0], tabWidgets[r ? tabWidgets.length - 1 : 0].id, r ? 1 : -1 );
-		if ( Math.abs( d ) === 1 && p[0].area === p[1].area )
-			moveWidget( CUI, ids[1], ids[0], d < 1 ? 1 : 0 );
-	} );
-};
+const urlbarRLHandler = CUI => sp.on( 'urlbarRight', () => {
+	const ids = [ID.urlContainer, ID.newSearch.button],
+			p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
+			d = p[0].position - (p[1] ? p[1].position : 0),
+			r = sp.prefs.urlbarRight;
+	moveWidget( CUI, ids[0], tabWidgets[r ? tabWidgets.length - 1 : 0].id, r ? 1 : -1 );
+	if ( Math.abs( d ) === 1 && p[0].area === p[1].area )
+		moveWidget( CUI, ids[1], ids[0], d < 1 ? 1 : 0 );
+} );
 
 const modeFlexible = (urlContainer, oldFlex) => {
 	urlContainer.setAttribute( 'flex', oldFlex );
@@ -232,25 +230,20 @@ const modeNonFlexible = (window, elements, focusedPref) => {
 	}
 };
 
-const updateBackForward = updateLayout => {
-	change( 'UpdateBackForwardCommands', orig => function( webnav ) {
-		orig.call( this, webnav );
-		updateLayout();
-	} );
-};
+const updateBackForward = updateLayout => change( 'UpdateBackForwardCommands',
+	orig => function( webnav ) { orig.call( this, webnav ); updateLayout(); }
+);
 
-const urlbarEscapeHandler = ({gURLBar, gBrowser}) => {
-	on( gURLBar, 'keydown', event => {
-		if ( event.keyCode === event.DOM_VK_ESCAPE ) {
-			let {popupOpen, value} = gURLBar;
-			setTimeout( () => {
-				// Only return focus to the page if nothing changed since escaping
-				if  ( gURLBar.popupOpen === popupOpen && gURLBar.value === value )
-					gBrowser.selectedBrowser.focus();
-			} );
-		}
-	} );
-};
+const urlbarEscapeHandler = ({gURLBar, gBrowser}) => on( gURLBar, 'keydown', event => {
+	if ( event.keyCode === event.DOM_VK_ESCAPE ) {
+		let {popupOpen, value} = gURLBar;
+		setTimeout( () => {
+			// Only return focus to the page if nothing changed since escaping
+			if  ( gURLBar.popupOpen === popupOpen && gURLBar.value === value )
+				gBrowser.selectedBrowser.focus();
+		} );
+	}
+} );
 
 const makeLine = window => {
 	const {gURLBar, CustomizableUI: CUI} = window;

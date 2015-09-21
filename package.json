@@ -1,14 +1,16 @@
 {
+	"main": "src/main.js",
 	"title": "Line",
 	"name": "firefox-line",
 	"version": "1.0.0",
 	"description": "Fork of Mozilla Labs Prospector Oneliner 2",
-	"main": "src/main.js",
-	"author": "Mazdak Farrokhzad",
-	"engines": {
-		"firefox": ">=38.0a1"
-	},
-	"translators": ["Mazdak Farrokhzad (Centril)", "freaktechnik"],
+	"keywords": ["firefox", "addon", "line", "oneliner", "chrome", "modification"],
+	"homepage": "http://centril.github.io/firefox-line",
+	"bugs": "https://github.com/Centril/firefox-line/issues",
+	"author": "Mazdak Farrokhzad <twingoow@gmail.com>",
+	"license": "GPL-2.0+",
+	"engines": { "firefox": ">=38.0a1" },
+	"translators": ["Mazdak Farrokhzad <twingoow@gmail.com>", "freaktechnik"],
 	"permissions": {"private-browsing": true, "multiprocess": true},
 	"preferences": [
 	{
@@ -71,6 +73,5 @@
 		"description": "Whether or not to retract/slide back the identify label (for example the green label you see on secure connections).",
 		"type": "bool",
 		"value": true
-	}],
-	"license": "GPL"
+	}]
 }

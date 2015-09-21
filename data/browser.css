@@ -186,10 +186,6 @@
 
 @-moz-document url-prefix('chrome://browser/content/browser.xul') {
 	@media (max-width: 700px) and (min-width:0px) {
-		#identity-box {
-			padding-right: 5px !important;
-			padding-left: 0px !important;
-		}
 		.autocomplete-history-dropmarker.urlbar-history-dropmarker,
 		#urlbar-reload-button { display:none !important; }
 	}

@@ -36,6 +36,9 @@ require( 'chrome' ).Cu.import( 'resource://gre/modules/WindowDraggingUtils.jsm' 
  * Doesn't work in Private Windows otherwise...
  * Keep this in memory so it doesn't get flagged for GC.
  *
+ * Please note that this is a Bug Firefox that we're fixing,
+ * otherwise this could be removed!
+ *
  * @param  {Window}   window  DOM Window.
  * @param  {Element}  navBar  #nav-bar Element.
  */

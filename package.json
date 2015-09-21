@@ -1,7 +1,7 @@
 {
 	"title": "Line",
 	"name": "firefox-line",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"description": "Fork of Mozilla Labs Prospector Oneliner 2",
 	"main": "src/main.js",
 	"author": "Mazdak Farrokhzad",

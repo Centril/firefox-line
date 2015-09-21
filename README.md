@@ -33,7 +33,7 @@ git clone https://github.com/Centril/firefox-line && cd firefox-line
 
 Since this is written with the **[Addon SDK]**, you will need to use **[`jpm`]**.
 
-If you haven't installed it before, simply do (you might need to run this with sudo):
+If you haven't installed it before, simply do (you might need to run this with `sudo`):
 
 ```shell
 npm install jpm -g
@@ -76,7 +76,11 @@ Copyright Mozilla foundation for the original addon.
 
 ## Acknowledgements
 
-This addon was based on **[Mozilla Labs: Prospector - Oneliner]** by [Mozilla Labs].
+This addon was based on **[Mozilla Labs: Prospector - Oneliner]** by [Mozilla Labs]
+but by now it is rewritten from scratch.
+
+Many thanks to **[@Noidart]** and **[@freaktechnik]** for help with the APIs
+and advice on addon development.
 
 <!-- references -->
 
@@ -100,5 +104,7 @@ This addon was based on **[Mozilla Labs: Prospector - Oneliner]** by [Mozilla La
 [GPL 2 License]: LICENSE.md
 
 [Mozilla Labs]: https://mozillalabs.com/en-US/
+[@Noidart]: https://github.com/Noitidart
+[@freaktechnik]: https://github.com/freaktechnik
 
 <!-- references -->

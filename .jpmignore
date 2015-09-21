@@ -4,3 +4,19 @@
 # Ignore any zip or xpi files
 *.zip
 *.xpi
+
+# Ignore ourselves & gitignore:
+.jpmignore
+.gitignore
+
+# Ignore jshint stuff:
+.jshintrc
+
+# Ignore all markdown files, license is specified in package.json:
+*.md
+
+# Ignore .git folder:
+.git/
+
+# Ignore artwork:
+art/

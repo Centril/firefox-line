@@ -21,10 +21,10 @@
 const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
-const { sdks, on, px, byId, removeChildren, attrs, xul, moveWidget, entries,
+const { sdks, on, px, byId, removeChildren, attrs, moveWidget,
 		appendChildren } = require('./utils');
 const { ID } = require( './ids' );
-const [ self, {get: _}, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
+const [ {data}, {get: _}, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
 	['self', 'l10n', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
 
 const enginesManager = window => {
@@ -56,7 +56,8 @@ const _setupSearchButton = (window, manager) => {
 		  trimIf = val => (val || '').trim(),
 		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
 		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
-		  make = (d, e, a) => attrs( xul( d, e ), a );
+		  // This used to be used in function make(), but AMO validator complained, so we oblige:
+		  nsXUL = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
 
 	let addEngineStack = [];
 	const addListener = msg => manager.add( msg.data.engine.href, { onSuccess( e ) {
@@ -100,7 +101,7 @@ const _setupSearchButton = (window, manager) => {
 		let val = trimIf( ub.value );
 		if ( val.length === 0 ) {
 			// Get selected text if any:
-			const worker = tabs.activeTab.attach( { contentScriptFile: self.data.url( 'selection.js' ) } );
+			const worker = tabs.activeTab.attach( { contentScriptFile: data.url( 'selection.js' ) } );
 			worker.port.on( 'firefox-line-selection-received', response => {
 				worker.destroy();
 
@@ -141,7 +142,7 @@ const _setupSearchButton = (window, manager) => {
 		appendChildren( pv.engines, engines.map( (engine, i, all) => {
 			const s = [i === 0, (i + 1) % maxCol === 0,
 				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
-			const b = make( doc, 'button', {
+			const b = attrs( doc.createElementNS( nsXUL, 'button' ), {
 				id: 'searchpanel-engine-one-off-item-' + slug( engine ),
 				class: ['searchbar-engine-one-off-item']
 					.concat( ['current', 'last-of-row', 'last-row'].filter( (c, i) => s[i] ) )
@@ -160,7 +161,7 @@ const _setupSearchButton = (window, manager) => {
 		// Place out 'add-engines':
 		appendChildren( pv.add, addEngineStack.reverse().map( ({uri, engine}, i) => {
 			const l = label( engine, 'cmd_addFoundEngine' );
-			const b = make( doc, 'button', {
+			const b = attrs( doc.createElementNS( nsXUL, 'button' ), {
 				id: 'searchbar-add-engine-' + slug( engine ),
 				class: 'addengine-item',
 				tooltiptext: l,
@@ -188,14 +189,14 @@ const _setupSearchButton = (window, manager) => {
 		ids.attachTo ).appendChild( pv.panel );
 
 	const create = doc => {
-		for ( let [k, e] of entries( {
-			panel:	['panelview',	{ id: ids.view, flex: '1'			}],
-			body:	['vbox',		{ class: 'panel-subview-body'		}],
-			label:	['label',		{ class: 'panel-subview-header',
-									  value: 'Search with providers'	}],
-			engines:['description', { class: 'search-panel-one-offs'	}],
-			add:	['vbox',		{ class: 'search-add-engines'		}]
-		} ) ) pv[k] = make( doc, ...e );
+		pv = {
+			panel:	attrs( doc.createElementNS( nsXUL, 'panelview' ), { id: ids.view, flex: '1' } ),
+			body:	attrs( doc.createElementNS( nsXUL, 'vbox' ), { class: 'panel-subview-body' } ),
+			label:	attrs( doc.createElementNS( nsXUL, 'label' ),
+						{ class: 'panel-subview-header', value: 'Search with providers'} ),
+			add:	attrs( doc.createElementNS( nsXUL, 'vbox' ), { class: 'search-add-engines' } ),
+			engines: attrs( doc.createElementNS( nsXUL, 'description' ), { class: 'search-panel-one-offs'} ),
+		};
 		appendChildren( pv.panel, [pv.label, pv.body] );
 		appendChildren( pv.body, [pv.engines, pv.add] );
 		attach( doc );

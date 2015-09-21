@@ -295,23 +295,3 @@ const appendChildren = (parent, arr) => {
 	return arr;
 };
 exports.appendChildren = appendChildren;
-
-const nsXUL = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
-/**
- * Creates a xul namespaced element.
- *
- * @param  {Document}  document The document.
- * @param  {string}    elem     The string tag.
- * @return {Element}            The created element.
- */
-const xul = (document, elem) => document.createElementNS( nsXUL, elem );
-exports.xul = xul;
-
-/**
- * Returns a generator expression for an object returning [K, V] for each iteration.
- *
- * @param  {Object}     obj  The object to iterate.
- * @return {Generator}       The expression.
- */
-const entries = obj => (for (key of Object.keys( obj )) [key, obj[key]]);
-exports.entries = entries;

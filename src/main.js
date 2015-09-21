@@ -342,4 +342,4 @@ const makeLine = window => {
 };
 
 // Plugin entry point:
-watchWindows( window => setTimeout( partial( makeLine, window ) ) );
+watchWindows( window => setTimeout( window => makeLine( window ) ) );

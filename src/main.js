@@ -198,9 +198,24 @@ const modeFlexible = (urlContainer, oldFlex) => {
 	urlContainer.style.maxWidth = '';
 };
 
+const widgetsFor = window =>
+	[for (w of CUI.getWidgetsInArea( CUI.AREA_NAVBAR )) w.forWindow( window )];
+
+const overflowingWidgets = window => [for (w of widgetsFor( window )) if ( w.overflowed ) w.node];
+
+const unoverflowTabs = tabs => {
+	tabs.removeAttribute( 'overflow' );
+	tabs.removeAttribute( 'positionpinnedtabs' );
+}
+
+const fixOverflowFlag = (window, navBar) => {
+	if ( !window.gURLBar.focused && overflowingWidgets( window ).length === 0 )
+		navBar.removeAttribute( 'overflowing' );
+};
+
 const modeNonFlexible = (window, elements, focusedPref) => {
-	const {document, gURLBar, CustomizableUI: CUI} = window;
-	const rw = partial( realWidth, window );
+	const {document, gURLBar} = window;
+	const rw = e => realWidth( window, e );
 
 	// Get aliases to various elements:
 	const [ tabs,, navBar, navBarTarget, urlContainer,
@@ -223,11 +238,12 @@ const modeNonFlexible = (window, elements, focusedPref) => {
 	const f = gURLBar.focused;
 	setWidth( urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] - offsetWidth ) );
 
+	if ( f ) return;
+
 	// If overflowing: Move overflowed items out of overflow area:
-	if ( !f && navBar.hasAttribute( 'overflowing' ) ) {
-		const widgets = [for (w of CUI.getWidgetsInArea( CUI.AREA_NAVBAR )) w.forWindow( window )];
-		const nodes	  = [for (w of widgets) if ( w.overflowed ) w.node];
-		const parent  = nodes[0].parentElement;
+	if ( navBar.hasAttribute( 'overflowing' ) ) {
+		const nodes = overflowingWidgets( window );
+		const parent = nodes[0].parentElement;
 
 		setTimeout( () => {
 			// Compute space & how many buttons we can move outa overflow:
@@ -247,20 +263,22 @@ const modeNonFlexible = (window, elements, focusedPref) => {
 				.concat( Array.from( navBarTarget.childNodes ).filter( n => !isTabs( n ) ) ) );
 
 			// Reduce as many overflowed as possible:
-			let added = 0;
 			for ( let n of nodes ) {
-				navBarTarget.appendChild( n )
-				width -= isTabs( n ) ? reduce( tabsC() ) : rw( n );
+				navBarTarget.appendChild( n );
+				const t = isTabs( n );
+				width -= t ? reduce( tabsC() ) : rw( n );
+
 				if ( width < 0 ) { parent.insertBefore( n, parent.firstChild ); break; }
-				if ( isTabs ) n.removeAttribute( 'overflow' );
-				added++;
+
+				if ( t ) unoverflowTabs( n );
+
 			 	n.removeAttribute( 'overflowedItem' );
+			 	n.removeAttribute( 'cui-anchorid')
 			}
 
-			if ( added === nodes.length )
-				navBar.removeAttribute( 'overflowing' );
+			fixOverflowFlag( window, navBar );
 		}, 100 );
-	}
+	} else unoverflowTabs( tabs );
 };
 
 const updateBackForward = updateLayout => change( 'UpdateBackForwardCommands',
@@ -334,6 +352,9 @@ const makeLine = window => {
 		layoutSwitcher();
 		updateLayout();
 	} ) );
+
+	// Fix overflow whenever we resize:
+	on( window, 'resize', partial( fixOverflowFlag, window, navBar ) );
 
 	// Detect when the back/forward buttons change state to update UI:
 	updateBackForward();

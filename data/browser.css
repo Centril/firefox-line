@@ -185,6 +185,13 @@
 
 	.tabbrowser-tab:not([pinned]) { width:auto !important; }
 
+	.tabbrowser-tabs:not([positionpinnedtabs]) {
+		padding-inline-start: 0px !important;
+	}
+	.tabbrowser-tabs:not([positionpinnedtabs]) > .tabbrowser-tab {
+		margin-inline-start: 0px !important;
+	}
+
 	#main-window .tabbrowser-arrowscrollbox > .arrowscrollbox-scrollbox {
 		padding-left: 0px !important;
 		padding-right: 0px !important;

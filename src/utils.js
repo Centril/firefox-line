@@ -18,6 +18,13 @@
  */
 'use strict';
 
+const requireJSM = jsm => require( `resource://${jsm}.jsm` );
+exports.requireJSM = requireJSM;
+
+// Get CUI, Services:
+const { CustomizableUI: CUI } = requireJSM( '/modules/CustomizableUI' );
+exports.CUI = CUI;
+
 /**
  * Returns a list of SDKs.
  *
@@ -245,6 +252,21 @@ const appendChild = parent => parent.appendChild.bind( parent );
 exports.appendChild = appendChild;
 
 /**
+ * Make widget removable, execute _do and then reset removable state.
+ *
+ * @param  {CustomizableUI}  CUI      The CustomizableUI.
+ * @param  {string}          id       The id of the widget to move.
+ * @param  {function}        _do      The function.
+ */
+const widgetMovable = (id, _do) => {
+	const nodes = CUI.getWidget( id ).instances.map( i => i.node );
+	const r = nodes.map( partial( setAttr, 'removable', true ) );
+	_do( id, nodes );
+	nodes.forEach( (n, i) => n.setAttribute( 'removable', r[i] ) );
+};
+exports.widgetMovable = widgetMovable;
+
+/**
  * Moves CustomizableUI widget with id,
  * relMove positions next to widget with relId.
  *
@@ -253,9 +275,10 @@ exports.appendChild = appendChild;
  * @param  {string}          relId    The id of the widget to move relative to.
  * @param  {Number}          relMove  The number of steps to move, default: 0.
  */
-const moveWidget = (CUI, id, relId, relMove = 1 ) => 
-	CUI.moveWidgetWithinArea( id, Math.max( 0, CUI.getPlacementOfWidget( relId ).position + relMove ) );
-exports.moveWidget = moveWidget;
+const widgetMove = (id, relId, relMove = 1 ) =>
+	CUI.moveWidgetWithinArea( id, Math.max( 0,
+		CUI.getPlacementOfWidget( relId ).position + relMove ) );
+exports.widgetMove = widgetMove;
 
 /**
  * Executes fn with args and then returns fn.

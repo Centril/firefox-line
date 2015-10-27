@@ -21,16 +21,18 @@
 // Import utils, search-engine, ids, SDK:
 const { ID }					= require( './ids' );
 const { setupSearchButton }		= require( './search-engine' );
-const {	sdks, nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
+const {	sdks, requireJSM, CUI,
+		nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
-		insertAfter, byId, moveWidget, exec, setAttr,
+		insertAfter, byId, widgetMove, widgetMovable, exec, setAttr,
 		attrs, appendChildren }	= require('./utils');
 const [ self, sp, {Style}, {modelFor}, {when: unloader},
 		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
 	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
 	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ] );
 
-require( 'chrome' ).Cu.import( 'resource://gre/modules/WindowDraggingUtils.jsm' );
+const { WindowDraggingElement } = requireJSM( 'gre/modules/WindowDraggingUtils' );
+
 /**
  * Ensures navBar is draggable, behaving like tabsBar:
  * Doesn't work in Private Windows otherwise...
@@ -124,42 +126,70 @@ const imposeMaxWidth = (window, {urlContainer, navBarTarget}) => {
 	on( window, 'resize', onResize );
 };
 
-let tabWidgets;
+const tabsStartListener = () => {
+	const listener = (what, area) => {
+		if ( area !== CUI.AREA_NAVBAR ) return;
+		const p = CUI.getPlacementOfWidget( ID.tabs );
+		if ( p === null || p.area !== CUI.AREA_NAVBAR ) return;
+		sp.prefs.tabsStartPos = p.position;
+	};
+
+	const li = {
+		onWidgetAdded: listener,
+		onWidgetRemoved: listener,
+		onWidgetMoved: listener
+	};
+
+	CUI.addListener( li );
+	unloader( () => CUI.removeListener( li ) );
+};
 
 // Move tabsBar controls to navBar or the reverse:
-const moveTabControls = CUI => {
-	if ( !tabWidgets ) tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
-	return exec( area => {
-		try {
-			CUI.beginBatchUpdate();
-			const start = area === CUI.AREA_NAVBAR ? 0 : CUI.getPlacementOfWidget( ID.urlContainer ).position;
-			tabWidgets.forEach( (w, i) => {
-				// If not already in area: Make removable, move, restore removable:
-				const nodes = CUI.getWidget( tabWidgets[i].id ).instances.map( i => i.node );
-				const r = nodes.map( partial( setAttr, 'removable', true ) );
-				CUI.addWidgetToArea( w.id, area, i + 0 + 1 );
-				nodes.forEach( (n, i) => n.setAttribute( 'removable', r[i] ) );
-			} );
-		} finally {
-			CUI.endBatchUpdate();
+const tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
+const moveTabControls = () => exec( area => {
+	try {
+		CUI.beginBatchUpdate();
+
+		delete sp.prefs.tabsStartPos;
+
+		// Figure out start position:
+		let start = 0;
+		if ( area !== CUI.AREA_TABSTRIP ) {
+			if ( !('tabsStartPos' in sp.prefs) ) {
+				const search = CUI.getPlacementOfWidget( ID.newSearch.button );
+				sp.prefs.tabsStartPos = 1 + (search !== null ? search :
+					CUI.getPlacementOfWidget( ID.urlContainer )).position;
+			}
+
+			start = sp.prefs.tabsStartPos;
 		}
-	}, CUI.AREA_NAVBAR );
-};
+
+		// Move all controls to navBar:
+		// If not already in area: Make removable, move, restore removable:
+		tabWidgets.forEach( (w, i) => widgetMovable( tabWidgets[i].id,
+			() => CUI.addWidgetToArea( w.id, area, start + i ) ) );
+
+		// Ensure order of [ID.tabs, ID.newTabs, ID.allTabs] is exactly that:
+		const order = [ID.newTabs, ID.allTabs];
+		order.forEach( (id, i) => widgetMove( id, ID.tabs, i + 1 ) );
+	} finally {
+		CUI.endBatchUpdate();
+	}
+}, CUI.AREA_NAVBAR );
 
 /**
  * Handles urlbar to the left or right mode.
- *
- * @param  {CustomizableUI}  CUI  The CustomizableUI.
  */
-const urlbarRLHandler = CUI => sp.on( 'urlbarRight', () => {
+const urlbarRLHandler = () => sp.on( 'urlbarRight', exec( () => {
 	const ids = [ID.urlContainer, ID.newSearch.button],
 			p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
 			d = p[0].position - (p[1] ? p[1].position : 0),
 			r = sp.prefs.urlbarRight;
-	moveWidget( CUI, ids[0], tabWidgets[r ? tabWidgets.length - 1 : 0].id, r ? 1 : -1 );
+
+	widgetMove( ids[0], tabWidgets[r ? tabWidgets.length - 1 : 0].id, r ? 1 : -1 );
 	if ( Math.abs( d ) === 1 && p[0].area === p[1].area )
-		moveWidget( CUI, ids[1], ids[0], d < 1 ? 1 : 0 );
-} );
+		widgetMove( ids[1], ids[0], d < 1 ? 1 : 0 );
+} ) );
 
 const modeFlexible = (urlContainer, oldFlex) => {
 	urlContainer.setAttribute( 'flex', oldFlex );
@@ -249,38 +279,39 @@ const urlbarEscapeHandler = ({gURLBar, gBrowser}) => on( gURLBar, 'keydown', eve
 } );
 
 const makeLine = window => {
-	const {gURLBar, CustomizableUI: CUI} = window;
+	const {gURLBar} = window;
 
 	// Apply browser.css:
 	const style = new Style( { uri: './browser.css' } );
 	attachTo( style, window );
-
-	// Handle the user preferences tabMinWidth & tabMaxWidth:s.
-	tabWidthHandler( window );
 
 	// Get aliases to various elements:
 	const elements = [ID.tabs, ID.tabsBar, ID.navBar, ID.navBarTarget, ID.urlContainer,
 		ID.overflow, ID.backForward, ID.backCmd, ID.forwardCmd].map( byId( window ) );
 	const [, tabsBar, navBar, navBarTarget, urlContainer,, backForward] = elements;
 
-	fixNavBarDrag( window, navBar );
-
-	imposeMaxWidth( window, {navBarTarget, urlContainer} );
-
 	// Remove search bar from navBar:
 	CUI.removeWidgetFromArea( ID.search );
+
+	// Move tabsBar controls to navBar:
+	const moveTabCtrls = moveTabControls();
 
 	// Make tabsBar the nextSibling of navBar, not the reverse which is the case now:
 	insertAfter( tabsBar, navBar );
 
-	// Move tabsBar controls to navBar:
-	const moveTabCtrls = moveTabControls( CUI );
-
 	// Save order of elements in tabsBar to restore later:
 	const origTabs = appendChildren( navBar, Array.from( tabsBar.childNodes ) );
 
+	// Handle the user preferences tabMinWidth & tabMaxWidth:s.
+	tabWidthHandler( window );
+
+	// Fix draggability of nav-bar:
+	fixNavBarDrag( window, navBar );
+
+	imposeMaxWidth( window, {navBarTarget, urlContainer} );
+
 	// Move to right/left when asked to:
-	urlbarRLHandler( CUI );
+	urlbarRLHandler();
 
 	const flex = urlContainer.getAttribute( 'flex' );
 
@@ -313,9 +344,6 @@ const makeLine = window => {
 	// Handle Identity Label:
 	identityLabelRetracter( window );
 
-	// Setup Search Button:
-	setupSearchButton( window );
-
 	// Detect escaping from the location bar when nothing changes:
 	urlbarEscapeHandler( window );
 
@@ -343,6 +371,12 @@ const makeLine = window => {
 		modeFlexible( urlContainer, flex );
 	} );
 };
+
+// Setup Search Button:
+setupSearchButton();
+
+// Save position of ID.tabs on change:
+tabsStartListener();
 
 // Plugin entry point:
 watchWindows( window => setTimeout( () => makeLine( window ) ) );

@@ -26,6 +26,8 @@ exports.ID = {
 	overflow:		'nav-bar-overflow-button',
 	tabsBar:		'TabsToolbar',
 	tabs:			'tabbrowser-tabs',
+	newTabs:		'new-tab-button',
+	allTabs:		'alltabs-button',
 	backCmd: 		'Browser:Back',
 	forwardCmd:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',

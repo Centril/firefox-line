@@ -21,21 +21,30 @@
 const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
-const { sdks, on, px, byId, removeChildren, attrs, moveWidget,
+const { sdks, requireJSM, CUI,
+		nullOrUndefined, on, px, byId, removeChildren, attrs, widgetMove,
 		appendChildren } = require('./utils');
 const { ID } = require( './ids' );
 const [ {data}, {get: _}, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
 	['self', 'l10n', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
 
-const enginesManager = window => {
+// Get PlacesUtils, strings, search, mm:
+const { PlacesUtils: pu } = requireJSM( 'gre/modules/PlacesUtils' );
+const { Services: { strings, search, mm } } = requireJSM( 'gre/modules/Services' );
+
+const winDoc = event => {
+	const doc = event.target.ownerDocument;
+	return [doc, doc.defaultView];
+}
+
+const enginesManager = () => {
 	// The services we are using: (nsIObserverService, nsIBrowserSearchService)
-	const { Services: { search }, Components: { utils: {reportError} } } = window;
 	return {
-		init: cb => search.init( status => {
+		init( cb ) { search.init( status => {
 			// Make sure nsIBrowserSearchService is initialized:
 			if ( !(status & 0x80000000 === 0) ) cb();
-			else reportError( 'Cannot initialize search service, bailing out: ' + status );
-		} ),
+			else console.error( 'Cannot initialize search service, bailing out: ' + status );
+		} ) },
 		byName: name => search.getEngineByName( name ),
 		add: (uri, cb = null) => search.addEngine( uri, 1, '', false, cb ),
 		remove: e => search.removeEngine( e ),
@@ -47,14 +56,9 @@ const enginesManager = window => {
 // Holds panelview items for all windows.
 let pv = {};
 
-const _setupSearchButton = (window, manager) => {
-	const {	CustomizableUI: CUI, Components: { utils: cu }, Services: { strings, search, mm },
-			document, whereToOpenLink, openUILinkIn,
-			KeyboardEvent, MouseEvent,
-			gURLBar: ub } = window,
-		  ids = ID.newSearch,
+const _setupSearchButton = manager => {
+	const ids = ID.newSearch,
 		  trimIf = val => (val || '').trim(),
-		  pu = cu.import( 'resource://gre/modules/PlacesUtils.jsm', {} ).PlacesUtils,
 		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
 		  // This used to be used in function make(), but AMO validator complained, so we oblige:
 		  nsXUL = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
@@ -72,6 +76,9 @@ const _setupSearchButton = (window, manager) => {
 	const hidePanel = () => CUI.hidePanelForNode( pv.body );
 
 	const engineCommand = event => {
+		const { gURLBar: ub, whereToOpenLink, openUILinkIn,
+				KeyboardEvent, MouseEvent} = winDoc( event )[1];
+
 		// Handle clicks on an engine, get engine first:
 		const engine = manager.byName( event.target.getAttribute( 'engine' ) );
 
@@ -122,7 +129,7 @@ const _setupSearchButton = (window, manager) => {
 	}
 
 	const updater = event => {
-		const doc = event.target.ownerDocument;
+		const [doc, window] = winDoc( event );
 
 		removeChildren( pv.engines );
 		removeChildren( pv.add );
@@ -204,31 +211,30 @@ const _setupSearchButton = (window, manager) => {
 
  	// Create the widget:
 	const tryW = CUI.getWidget( ids.button );
-	const widget = tryW.areaType ? tryW : CUI.createWidget( {
-		id: ids.button,
-		type: 'view',
-		viewId: ids.view,
-		defaultArea: CUI.AREA_NAVBAR,
-		label: _( 'search_button_label' ),
-		tooltiptext: _( 'search_button_tooltiptext' ),
-		onBeforeCreated: create,
-		onViewShowing: updater,
-		onClick: attach
-	} );
+	if (!(tryW && tryW.areaType)) {
+		const widget = CUI.createWidget( {
+			id: ids.button,
+			type: 'view',
+			viewId: ids.view,
+			defaultArea: CUI.AREA_NAVBAR,
+			label: _( 'search_button_label' ),
+			tooltiptext: _( 'search_button_tooltiptext' ),
+			onBeforeCreated: create,
+			onViewShowing: updater,
+			onClick: attach
+		} );
 
-	// Move button to after urlbar:
-	moveWidget( CUI, widget.id, ID.urlContainer );
+		// Move button to after urlbar:
+		widgetMove( widget.id, ID.urlContainer );
+	}
 
 	// Unloader: destroy widget & panel, remove addEngine listener:
 	unloader( () => {
 		CUI.destroyWidget( ids.button );
-		pv.panel.remove();
+		if ( !nullOrUndefined( pv.panel ) )	pv.panel.remove();
 		mm.removeMessageListener( 'Link:AddSearch', addListener );
 	} );
 };
 
-const setupSearchButton = window => {
-	const manager = enginesManager( window );
-	manager.init( () => _setupSearchButton( window, manager ) );
-};
+const setupSearchButton = () => enginesManager().init( _setupSearchButton );
 exports.setupSearchButton = setupSearchButton;

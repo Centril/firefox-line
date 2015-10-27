@@ -26,9 +26,9 @@ const {	sdks, requireJSM, CUI,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
 		insertAfter, byId, widgetMove, widgetMovable, exec, setAttr,
 		attrs, appendChildren }	= require('./utils');
-const [ self, sp, {Style}, {modelFor}, {when: unloader},
+const [ sp, {Style}, {modelFor}, {when: unloader},
 		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
-	  ['self', 'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
+	  ['simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
 	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ] );
 
 const { WindowDraggingElement } = requireJSM( 'gre/modules/WindowDraggingUtils' );

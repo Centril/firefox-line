@@ -97,11 +97,18 @@
 	}
 	#firefox-line-search-view .addengine-item:hover { background-color: #39F; }
 	#firefox-line-search-view .addengine-item:first-of-type { border-top: 1px solid #CCC; }
+	#firefox-line-search-view .addengine-item > .button-box { -moz-box-pack: start; }
 	#firefox-line-search-view .addengine-item > .button-box > .button-icon {
 		-moz-binding: url('chrome://browser/content/urlbarBindings.xml#addengine-icon');
+		-moz-binding: url('chrome://browser/content/search/search.xml#addengine-icon');
 		display: -moz-stack;
 		margin-left:-5px;
 		margin-right:10px;
+	}
+	#firefox-line-search-view .addengine-item > .button-box > .button-text {
+		-moz-box-flex: 1;
+		text-align: start;
+		padding-inline-start: 0px !important;
 	}
 	#firefox-line-search-view .addengine-icon { width: 16px; }
 	#firefox-line-search-view .addengine-badge {

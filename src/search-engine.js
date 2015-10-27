@@ -42,7 +42,7 @@ const enginesManager = () => {
 	return {
 		init( cb ) { search.init( status => {
 			// Make sure nsIBrowserSearchService is initialized:
-			if ( !(status & 0x80000000 === 0) ) cb();
+			if ( !(status & 0x80000000 === 0) ) cb( this );
 			else console.error( 'Cannot initialize search service, bailing out: ' + status );
 		} ) },
 		byName: name => search.getEngineByName( name ),
@@ -162,6 +162,7 @@ const _setupSearchButton = manager => {
 				engine: engine.name
 			} );
 			on( b, 'command', engineCommand, true );
+
 			return b;
 		} ) );
 
@@ -171,8 +172,10 @@ const _setupSearchButton = manager => {
 			const b = attrs( doc.createElementNS( nsXUL, 'button' ), {
 				id: 'searchbar-add-engine-' + slug( engine ),
 				class: 'addengine-item',
-				tooltiptext: l,
 				label: l,
+				pack: 'start',
+				crop: 'end',
+				tooltiptext: l,
 				title: engine.name,
 				uri: uri,
 				image: image( engine ),

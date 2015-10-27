@@ -167,7 +167,7 @@ const _setupSearchButton = manager => {
 		} ) );
 
 		// Place out 'add-engines':
-		appendChildren( pv.add, addEngineStack.reverse().map( ({uri, engine}, i) => {
+		appendChildren( pv.add, addEngineStack.slice().reverse().map( ({uri, engine}, i) => {
 			const l = label( engine, 'cmd_addFoundEngine' );
 			const b = attrs( doc.createElementNS( nsXUL, 'button' ), {
 				id: 'searchbar-add-engine-' + slug( engine ),

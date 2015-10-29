@@ -32,6 +32,7 @@ exports.ID = {
 	forwardCmd:		'Browser:Forward',
 	backForward:	'unified-back-forward-button',
 	idLabel:		'identity-icon-labels',
+	idLabelLabel:	'identity-icon-label',
 	search:			'search-container',
 	newSearch: {
 		button:		'firefox-line-search-button',

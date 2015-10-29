@@ -75,30 +75,33 @@ const tabWidthHandler = window => [['min', 'tabMinWidth'], ['max', 'tabMaxWidth'
 // Identity Label Handler:
 const identityLabelRetracter = window => {
 	// Get some resources:
-	const {getComputedStyle, gURLBar} = window;
-	const windowModel = modelFor( window );
-	const label = byId( window, ID.idLabel );
-	const labelWidth = setWidth( label );
-	let oldWidth;
-	let resizeOff = noop, updateOff = [];
+	const {getComputedStyle, gURLBar} = window,
+		  windowModel = modelFor( window ),
+		  [label, labelLabel] = [ID.idLabel, ID.idLabelLabel].map( byId( window ) ),
+		  noCrop = () => labelLabel.setAttribute( 'crop', 'none' ),
+		  getLWidth = () => px( realWidth( window, label ) ),
+		  setLWidth = setWidth( label ),
+		  reset = partial( setLWidth, 'auto' );
 
-	const reset = partial( labelWidth, 'auto' );
+	let oldWidth, resizeOff = noop, updateOff = [];
+	
 	unloader( reset );
 
 	const resize = () => {
 		if ( gURLBar.focused ) return;
+		noCrop();
 		reset();
 		oldWidth = getComputedStyle( label ).width;
-		labelWidth( px( realWidth( window, label ) ) );
-		label.offsetWidth; // Force repaint
-		labelWidth( oldWidth );
+		setLWidth( getLWidth() );
+		setLWidth( oldWidth );
 	};
 
 	const update = () => {
 		if ( gURLBar.focused ) {
-			oldWidth = px( realWidth( window, label ) );
-			labelWidth( px( '0' ) );
-		} else labelWidth( oldWidth );
+			noCrop();
+			oldWidth = getLWidth();
+			setLWidth( px( '0' ) );
+		} else setLWidth( oldWidth );
 	};
 
 	const bind = () => {
@@ -150,8 +153,6 @@ const moveTabControls = () => exec( area => {
 	try {
 		CUI.beginBatchUpdate();
 
-		delete sp.prefs.tabsStartPos;
-
 		// Figure out start position:
 		let start = 0;
 		if ( area !== CUI.AREA_TABSTRIP ) {
@@ -170,8 +171,7 @@ const moveTabControls = () => exec( area => {
 			() => CUI.addWidgetToArea( w.id, area, start + i ) ) );
 
 		// Ensure order of [ID.tabs, ID.newTabs, ID.allTabs] is exactly that:
-		const order = [ID.newTabs, ID.allTabs];
-		order.forEach( (id, i) => widgetMove( id, ID.tabs, i + 1 ) );
+		[ID.newTabs, ID.allTabs].forEach( (id, i) => widgetMove( id, ID.tabs, i + 1 ) );
 	} finally {
 		CUI.endBatchUpdate();
 	}

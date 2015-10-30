@@ -26,10 +26,10 @@ const {	sdks, requireJSM, CUI,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
 		insertAfter, byId, widgetMove, widgetMovable, exec, setAttr,
 		attrs, appendChildren }	= require('./utils');
-const [ sp, {Style}, {modelFor}, {when: unloader},
-		{partial}, {remove}, {isNull, isUndefined}, {setTimeout}, {attachTo, detachFrom}] = sdks(
-	  ['simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
-	   'lang/functional', 'util/array', 'lang/type', 'timers', 'content/mod' ] );
+const [ sp, {Style}, {modelFor}, {when: unloader}, {partial, delay},
+		{remove}, {isNull, isUndefined}, {attachTo, detachFrom}] = sdks(
+	  [	'simple-prefs', 'stylesheet/style', 'model/core', 'system/unload',
+		'lang/functional', 'util/array', 'lang/type', 'content/mod' ] );
 
 const { WindowDraggingElement } = requireJSM( 'gre/modules/WindowDraggingUtils' );
 
@@ -107,7 +107,7 @@ const identityLabelRetracter = window => {
 	const bind = () => {
 		updateOff = onMulti( gURLBar, ['blur', 'focus'], update );
 		windowModel.tabs.on( 'activate', resize );
-		setTimeout( () => resizeOff = on( window, 'resize', resize ), 100 );
+		delay( () => resizeOff = on( window, 'resize', resize ), 100 );
 	};
 
 	const unbind = () => {
@@ -125,7 +125,7 @@ const identityLabelRetracter = window => {
 // Impose a max-width constraint so we don't overflow!
 const imposeMaxWidth = (window, {urlContainer, navBarTarget}) => {
 	const onResize = () => urlContainer.style.maxWidth = px( realWidth( window, navBarTarget ) );
-	setTimeout( onResize, 100 );
+	delay( onResize, 100 );
 	on( window, 'resize', onResize );
 };
 
@@ -245,7 +245,7 @@ const modeNonFlexible = (window, elements, focusedPref) => {
 		const nodes = overflowingWidgets( window );
 		const parent = nodes[0].parentElement;
 
-		setTimeout( () => {
+		delay( () => {
 			// Compute space & how many buttons we can move outa overflow:
 			let width = rw( navBarTarget ) + rw( overflow );
 			const reduce = arr => arr.reduce( (a, n) => a + rw( n ), 0 );
@@ -288,7 +288,7 @@ const updateBackForward = updateLayout => change( 'UpdateBackForwardCommands',
 const urlbarEscapeHandler = ({gURLBar, gBrowser}) => on( gURLBar, 'keydown', event => {
 	if ( event.keyCode === event.DOM_VK_ESCAPE ) {
 		let {popupOpen, value} = gURLBar;
-		setTimeout( () => {
+		delay( () => {
 			// Only return focus to the page if nothing changed since escaping
 			if  ( gURLBar.popupOpen === popupOpen && gURLBar.value === value )
 				gBrowser.selectedBrowser.focus();
@@ -400,4 +400,4 @@ setupSearchButton();
 tabsStartListener();
 
 // Plugin entry point:
-watchWindows( window => setTimeout( () => makeLine( window ) ) );
+watchWindows( window => delay( makeLine, 0, window ) );

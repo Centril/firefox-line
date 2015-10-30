@@ -292,8 +292,8 @@ const urlbarEscapeHandler = ({gURLBar, gBrowser}) => on( gURLBar, 'keydown', eve
 const makeLine = window => {
 	const {gURLBar} = window;
 
-	// Apply browser.css:
-	const style = new Style( { uri: './browser.css' } );
+	// Apply line.css:
+	const style = new Style( { uri: './line.css' } );
 	attachTo( style, window );
 
 	// Get aliases to various elements:
@@ -379,11 +379,11 @@ const makeLine = window => {
 	} );
 };
 
-// Setup Search Button:
-setupSearchButton();
-
 // Save position of ID.tabs on change:
 tabsStartListener();
 
-// Plugin entry point:
-watchWindows( window => delay( makeLine, 0, window ) );
+// Line:ify each window as they come:
+watchWindows( partial( delay, makeLine, 0 ) );
+
+// Setup Search Button:
+delay( setupSearchButton );

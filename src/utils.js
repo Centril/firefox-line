@@ -90,7 +90,8 @@ const change = (obj, prop, val) => {
 }
 exports.change = change;
 
-const undoListener = (element, type, listener, capture) => {
+const bindListener = (binder, element, type, listener, capture) => {
+	binder( element, type, listener, capture );
 	let use = false;
 	const undo		= () => events.removeListener( element, type, listener, capture );
 	const unload	= () => { if ( use ) undo(); use = false; };
@@ -108,10 +109,8 @@ const undoListener = (element, type, listener, capture) => {
  * @param  {Boolean}  capture  Bubbling related, see addEventListener. Default value: false.
  * @return {function}          A function that undoes the registration.
  */
-const on = (element, type, listener, capture = false) => {
-	events.on( element, type, listener, capture );
-	return undoListener( element, type, listener, capture );
-}
+const on = (element, type, listener, capture = false) =>
+	bindListener( events.on, element, type, listener, capture );
 exports.on = on;
 
 /**
@@ -125,10 +124,8 @@ exports.on = on;
  * @param  {Boolean}  capture  Bubbling related, see addEventListener. Default value: false.
  * @return {function}          A function that undoes the registration.
  */
-const once = (element, type, listener, capture = false) => {
-	events.once( element, type, listener, capture );
-	return undoListener( element, type, listener, capture );
-}
+const once = (element, type, listener, capture = false) =>
+	bindListener( events.once, element, type, listener, capture );
 exports.once = once;
 
 /**
@@ -250,6 +247,22 @@ exports.removeChildren = removeChildren;
  */
 const appendChild = parent => parent.appendChild.bind( parent );
 exports.appendChild = appendChild;
+
+/**
+ * Executes fn in a CUI batch update.
+ *
+ * @param  {Function} fn The function to execute.
+ * @return {*}           Whatever fn returns.
+ */
+const cuiDo = (fn, ...args) => {
+	try {
+		CUI.beginBatchUpdate();
+		return fn( ...args );
+	} finally {
+		CUI.endBatchUpdate();
+	}
+};
+exports.cuiDo = cuiDo;
 
 /**
  * Make widget removable, execute _do and then reset removable state.

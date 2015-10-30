@@ -150,8 +150,7 @@ const tabsStartListener = () => {
 };
 
 // Move tabsBar controls to navBar or the reverse:
-const tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
-const moveTabControls = partial( exec, partial( cuiDo, area => {
+const moveTabControls = (tabWidgets, area) => cuiDo( () => {
 	// Figure out start position:
 	let start = 0;
 	if ( area !== CUI.AREA_TABSTRIP ) {
@@ -171,12 +170,12 @@ const moveTabControls = partial( exec, partial( cuiDo, area => {
 
 	// Ensure order of [ID.tabs, ID.newTabs, ID.allTabs] is exactly that:
 	[ID.newTabs, ID.allTabs].forEach( (id, i) => widgetMove( id, ID.tabs, i + 1 ) );
-} ), CUI.AREA_NAVBAR );
+} );
 
 /**
  * Handles urlbar to the left or right mode.
  */
-const urlbarRLHandler = () => sp.on( 'urlbarRight', exec( () => {
+const urlbarRLHandler = tabWidgets => sp.on( 'urlbarRight', exec( () => {
 	const ids = [ID.urlContainer, ID.newSearch.button],
 			p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
 			d = p[0].position - (p[1] ? p[1].position : 0),
@@ -289,6 +288,18 @@ const urlbarEscapeHandler = ({gURLBar, gBrowser}) => on( gURLBar, 'keydown', eve
 	} );
 } );
 
+const layoutManager = (window, elements, urlContainer, flex) => {
+	// Make a switch of all the modes and pick the current one:
+	let layoutUpdater;
+	const layouts = {
+		fixed:		partial( modeNonFlexible, window, elements, 'urlbarBlur' ),
+		sliding:	partial( modeNonFlexible, window, elements, 'urlbarFocused' ),
+		flexible:	partial( modeFlexible, urlContainer, flex )
+	};
+	return {change: exec( layoutUpdater = exec( layouts[sp.prefs.urlbarMode] ) ),
+			update: () => layoutUpdater()};
+}
+
 const makeLine = window => {
 	const {gURLBar} = window;
 
@@ -305,7 +316,8 @@ const makeLine = window => {
 	CUI.removeWidgetFromArea( ID.search );
 
 	// Move tabsBar controls to navBar:
-	const moveTabCtrls = moveTabControls();
+	const tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
+	moveTabControls( tabWidgets, CUI.AREA_NAVBAR );
 
 	// Make tabsBar the nextSibling of navBar, not the reverse which is the case now:
 	insertAfter( tabsBar, navBar );
@@ -319,34 +331,27 @@ const makeLine = window => {
 	// Fix draggability of nav-bar:
 	fixNavBarDrag( window, navBar );
 
+	// Impose a max width on urlContainer:
 	imposeMaxWidth( window, {navBarTarget, urlContainer} );
 
 	// Move to right/left when asked to:
-	urlbarRLHandler();
+	urlbarRLHandler( tabWidgets );
 
+	// Get our layout manager:
 	const flex = urlContainer.getAttribute( 'flex' );
-
-	// Make a switch of all the modes and pick the current one:
-	let layoutUpdater;
-	const layouts = {
-		fixed:		partial( modeNonFlexible, window, elements, 'urlbarBlur' ),
-		sliding:	partial( modeNonFlexible, window, elements, 'urlbarFocused' ),
-		flexible:	partial( modeFlexible, urlContainer, flex )
-	};
-	const layoutChange = exec( layoutUpdater = exec( layouts[sp.prefs.urlbarMode] ) );
-	const layoutUpdate = () => layoutUpdater();
+	const layout = layoutManager( window, elements, urlContainer, flex );
 
 	// Update the look immediately when activating:
-	['urlbarBlur', 'urlbarMode'].forEach( e => sp.on( e, layoutChange ) );
+	['urlbarBlur', 'urlbarMode'].forEach( e => sp.on( e, layout.change ) );
 
 	// Fix overflow whenever we resize:
 	resizer( window, partial( fixOverflowFlag, window, navBar ) );
 
 	// Detect when the back/forward buttons change state to update UI:
-	updateBackForward( layoutUpdate );
+	updateBackForward( layout.update );
 
 	// Make sure we set the right size of the urlbar on blur or focus:
-	onMulti( gURLBar, ['blur', 'focus'], layoutUpdate );
+	onMulti( gURLBar, ['blur', 'focus'], layout.update );
 
 	// Handle Identity Label:
 	identityLabelRetracter( window );
@@ -372,7 +377,7 @@ const makeLine = window => {
 		appendChildren( tabsBar, origTabs );
 
 		// Return tab controls:
-		moveTabCtrls( CUI.AREA_TABSTRIP );
+		moveTabControls( tabWidgets, CUI.AREA_TABSTRIP );
 
 		if ( backForward ) backForward.style.marginRight = '';
 		modeFlexible( urlContainer, flex );

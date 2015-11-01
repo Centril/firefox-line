@@ -78,7 +78,6 @@ exports.nullOrUndefined = nullOrUndefined;
  * Replace a value of a property with another value or a function of the original value.
  * On unload, the change is reversed.
  *
- * @param  {Window} window A DOM Window.
  * @param  {Object} obj    The object to change property on.
  * @param  {string} prop   The property to change value of.
  * @param  {*}      val    The value to set.

@@ -193,24 +193,77 @@ const modeFlexible = (urlContainer, oldFlex) => {
 	urlContainer.style.maxWidth = '';
 };
 
-const overflowingWidgets = window => CUI.getWidgetsInArea( CUI.AREA_NAVBAR )
-	.map( w => w.forWindow( window ) ).filter( w => w.overflowed ).map( w => w.node );
+const fixOverflowFlag = (window, navBar) =>
+	delay( () => navBar.overflowable._moveItemsBackToTheirOrigin( true ), 300 );
 
-const unoverflowTabs = tabs => {
-	tabs.removeAttribute( 'overflow' );
-	tabs.removeAttribute( 'positionpinnedtabs' );
+const fixPositionPinnedTabs = tabs => {
+	const old = tabs._positionPinnedTabs;
+	tabs._positionPinnedTabs = function() {
+		const numPinned = this.tabbrowser._numPinnedTabs;
+		const doPosition = this.getAttribute( 'overflow' ) === "true" && numPinned > 0;
+		const widthOf = elem => elem.getBoundingClientRect().width;
+
+		if ( doPosition ) {
+			this.setAttribute( 'positionpinnedtabs', 'true');
+
+			const target = this.parentElement;
+			let targetRemains = widthOf( target );
+
+			const targetSibling = target.nextSibling;
+			if (targetSibling && targetSibling.classList.contains( 'overflow-button' ) )
+				targetRemains -= 34;
+
+			for( let i = 0; i < target.childNodes.length; i++ ) {
+				const sibling = target.childNodes[i];
+				if ( sibling === this ) break;
+				targetRemains -= widthOf( sibling );
+			}
+
+			const scrollButtonWidthUp = widthOf( this.mTabstrip._scrollButtonUp );
+			const scrollButtonWidthDown = widthOf( this.mTabstrip._scrollButtonDown );
+			const paddingStart = this.mTabstrip.scrollboxPaddingStart;
+
+			targetRemains -= paddingStart + scrollButtonWidthDown + scrollButtonWidthUp;
+			const widthExLeftOf = targetRemains;
+
+			let fail = false;
+			for ( let i = 0; i < numPinned; i++ ) {
+				if ( (targetRemains -= widthOf( this.childNodes[i] )) < 0 ) {
+					fail = true;
+					break;
+				}
+			}
+
+			if ( fail ) {
+				this.removeAttribute( 'positionpinnedtabs' );
+				this.style.minWidth = widthExLeftOf + 'px';
+				delay( () => this.style.minWidth = 'inherit', 100 );
+			} else {
+				let width = 0;
+				for ( let j = numPinned - 1; j >= 0; j-- ) {
+					const tab = this.childNodes[j];
+					width += widthOf( tab );
+					tab.style.MozMarginStart = - (width + scrollButtonWidthDown + paddingStart) + "px";
+				}
+				this.style.MozPaddingStart = width + paddingStart + "px";
+			}
+		} else {
+			this.removeAttribute( 'positionpinnedtabs' );
+			for ( let i = 0; i < numPinned; i++ ) this.childNodes[i].style.MozMarginStart = "";
+			this.style.MozPaddingStart = "";
+		}
+
+		if ( this._lastNumPinned !== numPinned ) {
+			this._lastNumPinned = numPinned;
+			this._handleTabSelect( false );
+		}
+	};
+	unloader( () => tabs._positionPinnedTabs = old );
 }
 
-const fixOverflowFlag = (window, navBar) => {
-	if ( !window.gURLBar.focused && overflowingWidgets( window ).length === 0 )
-		navBar.removeAttribute( 'overflowing' );
-};
-
 const modeNonFlexible = (window, elements, focusedPref) => {
-	const {document, gURLBar} = window;
-	const rw = e => realWidth( window, e );
-
 	// Get aliases to various elements:
+	const {gURLBar} = window;
 	const [ tabs,, navBar, navBarTarget, urlContainer,
 			overflow, backForward, backCmd, forwardCmd ] = elements;
 
@@ -231,47 +284,8 @@ const modeNonFlexible = (window, elements, focusedPref) => {
 	const f = gURLBar.focused;
 	setWidth( urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] - offsetWidth ) );
 
-	if ( f ) return;
-
-	// If overflowing: Move overflowed items out of overflow area:
-	if ( navBar.hasAttribute( 'overflowing' ) ) {
-		const nodes = overflowingWidgets( window );
-		const parent = nodes[0].parentElement;
-
-		delay( () => {
-			// Compute space & how many buttons we can move outa overflow:
-			let width = rw( navBarTarget ) + rw( overflow );
-			const reduce = arr => arr.reduce( (a, n) => a + rw( n ), 0 );
-			const isTabs = e => e.id === tabs.id;
-
-			// Treat tabs as 'non-flex':
-			const tabsC = () => {
-				const scrollbox = document.getAnonymousElementByAttribute( tabs, 'anonid', 'arrowscrollbox' );
-				return scrollbox ? Array.from( document.getAnonymousNodes( scrollbox ) )
-					.filter( n => !n.classList.contains( 'arrowscrollbox-scrollbox' ) ) : [];
-			};
-
-			// Reduce all widths that are non-overflowed:
-			width -= reduce( tabsC().concat( Array.from( document.querySelectorAll( '.tabbrowser-tab' ) ) )
-				.concat( Array.from( navBarTarget.childNodes ).filter( n => !isTabs( n ) ) ) );
-
-			// Reduce as many overflowed as possible:
-			for ( let n of nodes ) {
-				navBarTarget.appendChild( n );
-				const t = isTabs( n );
-				width -= t ? reduce( tabsC() ) : rw( n );
-
-				if ( width < 0 ) { parent.insertBefore( n, parent.firstChild ); break; }
-
-				if ( t ) unoverflowTabs( n );
-
-			 	n.removeAttribute( 'overflowedItem' );
-			 	n.removeAttribute( 'cui-anchorid')
-			}
-
-			fixOverflowFlag( window, navBar );
-		}, 100 );
-	} else unoverflowTabs( tabs );
+	// Handle overflow:
+	if ( !f ) delay( () => navBar.overflowable._moveItemsBackToTheirOrigin( true ), 110 );
 };
 
 const updateBackForward = updateLayout => change( 'UpdateBackForwardCommands',
@@ -310,7 +324,7 @@ const makeLine = window => {
 	// Get aliases to various elements:
 	const elements = [ID.tabs, ID.tabsBar, ID.navBar, ID.navBarTarget, ID.urlContainer,
 		ID.overflow, ID.backForward, ID.backCmd, ID.forwardCmd].map( byId( window ) );
-	const [, tabsBar, navBar, navBarTarget, urlContainer,, backForward] = elements;
+	const [tabs, tabsBar, navBar, navBarTarget, urlContainer,, backForward] = elements;
 
 	// Remove search bar from navBar:
 	CUI.removeWidgetFromArea( ID.search );
@@ -336,6 +350,8 @@ const makeLine = window => {
 
 	// Move to right/left when asked to:
 	urlbarRLHandler( tabWidgets );
+
+	fixPositionPinnedTabs( tabs );
 
 	// Get our layout manager:
 	const flex = urlContainer.getAttribute( 'flex' );

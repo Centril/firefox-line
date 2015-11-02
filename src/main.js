@@ -33,6 +33,10 @@ const [ {Class: _class}, sp, {Style}, {modelFor}, {when: unloader}, {partial, de
 
 const { WindowDraggingElement } = requireJSM( 'gre/modules/WindowDraggingUtils' );
 
+/**
+ * Binds listeners to CUI, listening for changes in the
+ * placement of #tabbrowser-tabs and stores it's new position.
+ */
 const tabsStartListener = () => {
 	const listener = (what, area) => {
 		if ( area !== CUI.AREA_NAVBAR ) return;
@@ -51,7 +55,18 @@ const tabsStartListener = () => {
 	unloader( () => CUI.removeListener( li ) );
 };
 
+/**
+ * Creates a line instance for a window,
+ * it has one public method: .make().
+ *
+ * @param  {ChromeWindow}   window   The window to make line for.
+ * @return {line}                    Our line object.
+ */
 const line = _class( {
+	// -------------------------------------------------------------------------
+	// Public API:
+	// -------------------------------------------------------------------------
+
 	/**
 	 * Constructor:
 	 *
@@ -76,6 +91,9 @@ const line = _class( {
 		this.oldFlex = this.urlContainer.getAttribute( 'flex' );
 	},
 
+	/**
+	 * Applies line modifications for window.
+	 */
 	make() {
 		// Apply line.css:
 		const style = this.attach( new Style( { uri: './line.css' } ) );
@@ -104,6 +122,7 @@ const line = _class( {
 		// Move to right/left when asked to:
 		this.urlbarRLHandler();
 
+		// Improves #tabbrowser-tabs method _positionPinnedTabs:
 		this.fixPositionPinnedTabs();
 
 		// Get our layout manager:
@@ -113,7 +132,7 @@ const line = _class( {
 		['urlbarBlur', 'urlbarMode'].forEach( e => sp.on( e, layout.change ) );
 
 		// Fix overflow whenever we resize:
-		this.resizer( this.fixOverflowFlag.bind( this ) );
+		this.resizer( partial( delay, this.moveBackWidgets.bind( this ), 300 ) );
 
 		// Detect when the back/forward buttons change state to update UI:
 		this.updateBackForward( layout.update );
@@ -153,17 +172,55 @@ const line = _class( {
 		} );
 	},
 
-	// Attaches/Detaches an object to our window:
-	attach( obj ) { attachTo( obj, this.window ); return obj; },
-	detach( obj ) { detachFrom( obj, this.window ); return null; },
+	// -------------------------------------------------------------------------
+	// (Private) Modifications helpers:
+	// -------------------------------------------------------------------------
 
-	// Events:
-	on( event, fn ) { return on( this.window, event, fn ); },
+	/**
+	 * Attaches a modification to our window.
+	 *
+	 * @param  {*} mod  The modification to attach.
+	 * @return {*}      The argument mod.
+	 */
+	attach( mod ) { attachTo( mod, this.window ); return mod; },
 
-	// Resize handler:
-	resizer( fn ) { return this.on( 'resize', fn ); },
+	/**
+	 * Detaches a modification from our window.
+	 *
+	 * @param  {*} mod  The modification to detach.
+	 * @return {null}   Null.
+	 */
+	detach( mod ) { detachFrom( mod, this.window ); return null; },
 
-	// Helper: Moves back CUI widgets to target:
+	// -------------------------------------------------------------------------
+	// (Private) Listener helpers:
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Registers listener on our window for type events.
+	 * Automatically removed on unload.
+	 *
+	 * @param  {string}   type     The type of event to listen on.
+	 * @param  {function} listener The listener (callback) to register.
+	 * @return {function}          A function that undoes the registration.
+	 */
+	on( event, listener ) { return on( this.window, event, listener ); },
+
+	/**
+	 * Registers an event of type resize to our window.
+	 *
+	 * @param  {function} listener The listener (callback) to register.
+	 * @return {function}          A function that undoes the registration.
+	 */
+	resizer( listener ) { return this.on( 'resize', listener ); },
+
+	// -------------------------------------------------------------------------
+	// (Private) Various fixes that Firefox doesn't have:
+	// -------------------------------------------------------------------------
+
+	/**
+	 * (Helper) Moves back CUI widgets to target.
+	 */
 	moveBackWidgets() {
 		this.navBar.overflowable._moveItemsBackToTheirOrigin( true );
 	},
@@ -180,7 +237,95 @@ const line = _class( {
 		this.window.windowDraggingElement = new WindowDraggingElement( this.navBar );
 	},
 
-	// Handle the user preferences tabMinWidth & tabMaxWidth:s:
+	/**
+	 * Improves #tabbrowser-tabs method _positionPinnedTabs.
+	 */
+	fixPositionPinnedTabs() {
+		const old = this.tabs._positionPinnedTabs;
+		this.tabs._positionPinnedTabs = function() {
+			const widthOf = elem => elem.getBoundingClientRect().width;
+			const numPinned = this.tabbrowser._numPinnedTabs;
+			const doPosition = this.getAttribute( 'overflow' ) === "true" && numPinned > 0;
+
+			if ( doPosition ) {
+				/*
+				 * Our improvements are here:
+				 * Compute the width of CUI.AREA_NAVBARs target.
+				 * 1) Reduce by width of overflow button.
+				 * 2) Reduce by width of preceding siblings of tabs.
+				 * 3) Reduce by width of non-tab elements of tabs.
+				 * 4) Try to fit all pinned tabs in the remaining space, and:
+				 * 4.1) Success: Do the normal stuff.
+				 * 4.2) Failure: Don't use positionpinnedtabs.
+				 */
+				this.setAttribute( 'positionpinnedtabs', 'true' );
+
+				const target = this.parentElement;
+				let targetRemains = widthOf( target );
+
+				// Reduce by width of overflow button.
+				targetRemains -= 34;
+
+				// Reduce by width of preceding siblings of tabs.
+				for( let i = 0; i < target.childNodes.length; i++ ) {
+					const sibling = target.childNodes[i];
+					if ( sibling === this ) break;
+					targetRemains -= widthOf( sibling );
+				}
+
+				const scrollButtonWidthUp = widthOf( this.mTabstrip._scrollButtonUp );
+				const scrollButtonWidthDown = widthOf( this.mTabstrip._scrollButtonDown );
+				const paddingStart = this.mTabstrip.scrollboxPaddingStart;
+
+				// Reduce by width of non-tab elements of tabs.
+				targetRemains -= paddingStart + scrollButtonWidthDown + scrollButtonWidthUp;
+				const widthExLeftOf = targetRemains;
+
+				// Try to fit all pinned tabs in the remaining space.
+				let fail = false;
+				for ( let i = 0; i < numPinned; i++ ) {
+					if ( (targetRemains -= widthOf( this.childNodes[i] )) < 0 ) {
+						fail = true;
+						break;
+					}
+				}
+
+				if ( fail ) {
+					// Failure: Don't use positionpinnedtabs.
+					this.removeAttribute( 'positionpinnedtabs' );
+					this.style.minWidth = widthExLeftOf + 'px';
+					delay( () => this.style.minWidth = 'inherit', 100 );
+				} else {
+					// Success: Do the normal stuff.
+					let width = 0;
+					for ( let j = numPinned - 1; j >= 0; j-- ) {
+						const tab = this.childNodes[j];
+						width += widthOf( tab );
+						tab.style.MozMarginStart = - (width + scrollButtonWidthDown + paddingStart) + "px";
+					}
+					this.style.MozPaddingStart = width + paddingStart + "px";
+				}
+			} else {
+				this.removeAttribute( 'positionpinnedtabs' );
+				for ( let i = 0; i < numPinned; i++ ) this.childNodes[i].style.MozMarginStart = "";
+				this.style.MozPaddingStart = "";
+			}
+
+			if ( this._lastNumPinned !== numPinned ) {
+				this._lastNumPinned = numPinned;
+				this._handleTabSelect( false );
+			}
+		};
+		unloader( () => this.tabs._positionPinnedTabs = old );
+	},
+
+	// -------------------------------------------------------------------------
+	// (Private) User prefs handlers & their logic:
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Registers handlers for the user preferences tabMinWidth & tabMaxWidth:s.
+	 */
 	tabWidthHandler() {
 		[['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
 			const saved = {};
@@ -206,7 +351,9 @@ const line = _class( {
 		} );
 	},
 
-	// Identity Label Handler:
+	/**
+	 * Registers handlers for the Identity Label that retracts on urlbar focus/blur.
+	 */
 	identityLabelRetracter() {
 		// Get some resources:
 		const {getComputedStyle} = this.window,
@@ -255,15 +402,52 @@ const line = _class( {
 			sp.prefs.retractIdentityLabel ? bind() : unbind() ) );
 	},
 
-	// Impose a max-width constraint so we don't overflow:
-	imposeMaxWidth() {
-		const s = this.urlContainer.style
-		const onResize = () => s.maxWidth = px( realWidth( this.window, this.navBarTarget ) );
-		delay( onResize, 100 );
-		this.resizer( onResize );
+	/**
+	 * Registers handlers for sp.prefs.urlbarRight and executes immediately:
+	 * Changes urlbar to the right of tabs or left depending on sp.prefs.urlbarRight.
+	 */
+	urlbarRLHandler() {
+		sp.on( 'urlbarRight', exec( () => {
+			const ids = [ID.urlContainer, ID.newSearch.button],
+					p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
+					d = p[0].position - (p[1] ? p[1].position : 0),
+					r = sp.prefs.urlbarRight;
+
+			const anchor = r ? ID.allTabs : ID.tabs;
+			widgetMove( ids[0], anchor, r ? 1 : -1 );
+			if ( Math.abs( d ) === 1 && p[0].area === p[1].area )
+				widgetMove( ids[1], ids[0], d < 1 ? 1 : 0 );
+		} ) );
 	},
 
-	// Move tabsBar controls to navBar or the reverse:
+	// -------------------------------------------------------------------------
+	// (Private) Layout management:
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Returns an object with two methods {change, update} that:
+	 * { change: the current behavior of update() depending on sp.prefs.urlbarMode,
+	 *   update: executes the layout mode depending on what change() set. }
+	 *
+	 * @return {object}  The object specified above.
+	 */
+	layoutManager() {
+		// Make a switch of all the modes and pick the current one:
+		let layoutUpdater;
+		const layouts = {
+			fixed:		this.modeFixed.bind( this ),
+			sliding:	this.modeSliding.bind( this ),
+			flexible:	this.modeFlexible.bind( this )
+		};
+		return {change: exec( layoutUpdater = exec( layouts[sp.prefs.urlbarMode] ) ),
+				update: () => layoutUpdater()};
+	},
+
+	/**
+	 * Moves CUI.AREA_TABSTRIP controls to CUI.AREA_NAVBAR or the inverse.
+	 *
+	 * @param  {string}  area  The CUI area id, e.g: CUI.AREA_NAVBAR.
+	 */
 	moveTabControls( area ) {
 		cuiDo( () => {
 			// Figure out start position:
@@ -288,34 +472,21 @@ const line = _class( {
 		} );
 	},
 
-	// Handles urlbar to the left or right mode:
-	urlbarRLHandler() {
-		sp.on( 'urlbarRight', exec( () => {
-			const ids = [ID.urlContainer, ID.newSearch.button],
-					p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
-					d = p[0].position - (p[1] ? p[1].position : 0),
-					r = sp.prefs.urlbarRight;
-
-			const anchor = r ? ID.allTabs : ID.tabs;
-			widgetMove( ids[0], anchor, r ? 1 : -1 );
-			if ( Math.abs( d ) === 1 && p[0].area === p[1].area )
-				widgetMove( ids[1], ids[0], d < 1 ? 1 : 0 );
-		} ) );
+	/**
+	 * Registers handlers that impose a max-width constraint immediately,
+	 * and on resize so we don't overflow CUI.AREA_NAVBAR.
+	 */
+	imposeMaxWidth() {
+		const s = this.urlContainer.style
+		const onResize = () => s.maxWidth = px( realWidth( this.window, this.navBarTarget ) );
+		delay( onResize, 100 );
+		this.resizer( onResize );
 	},
 
-	layoutManager() {
-		// Make a switch of all the modes and pick the current one:
-		let layoutUpdater;
-		const layouts = {
-			fixed:		this.modeFixed.bind( this ),
-			sliding:	this.modeSliding.bind( this ),
-			flexible:	this.modeFlexible.bind( this )
-		};
-		return {change: exec( layoutUpdater = exec( layouts[sp.prefs.urlbarMode] ) ),
-				update: () => layoutUpdater()};
-	},
-
-	// Handles flexible mode layout:
+	/**
+	 * The layout mode for sp.prefs.urlbarMode === 'flexible'.
+	 * Makes the urlbar flex, and resets all position, width & max-width styles.
+	 */
 	modeFlexible() {
 		this.urlContainer.setAttribute( 'flex', this.oldFlex );
 		const s = this.urlContainer.style;
@@ -324,11 +495,25 @@ const line = _class( {
 		s.maxWidth = '';
 	},
 
+	/**
+	 * The layout mode for sp.prefs.urlbarMode === 'fixed'.
+	 * Makes the urlbar a fixed width,
+	 * specified by preference: sp.prefs.urlbarBlur.
+	 */
 	modeFixed() { this.modeNonFlexible( 'urlbarBlur' ); },
 
+	/**
+	 * The layout mode for sp.prefs.urlbarMode === 'sliding'.
+	 * Makes the urlbars width depend on if the urlbar is focused or not,
+	 * specified by preferences: sp.prefs.urlbarFocused and sp.prefs.urlbarBlur.
+	 */
 	modeSliding() { this.modeNonFlexible( 'urlbarFocused' ); },
 
-	// Handles non-flexible mode layout:
+	/**
+	 * (Helper) Handles mode layout for other modes than modeFlexible.
+	 *
+	 * @param  {string}  focusedPref  Name of the preference to use when urlbar is focused for width.
+	 */
 	modeNonFlexible( focusedPref ) {
 		// We're not flexible:
 		if ( this.urlContainer.hasAttribute( 'flex') ) this.urlContainer.removeAttribute( 'flex' );
@@ -351,81 +536,23 @@ const line = _class( {
 		if ( !f ) delay( this.moveBackWidgets.bind( this ), 110 );
 	},
 
-	fixOverflowFlag() { delay( () => this.moveBackWidgets.bind( this ), 300 ) },
+	// -------------------------------------------------------------------------
+	// (Private) urlbar interaction handlers:
+	// -------------------------------------------------------------------------
 
-	fixPositionPinnedTabs() {
-		const widthOf = elem => elem.getBoundingClientRect().width;
-		const {mTabstrip: tabstrip, tabbrowser} = this.tabs;
-		const {_scrollButtonUp, _scrollButtonDown} = tabstrip;
-		const targetChildren = this.navBarTarget.childNodes;
-
-		const old = this.tabs._positionPinnedTabs;
-		this.tabs._positionPinnedTabs = function() {
-			const numPinned = tabbrowser._numPinnedTabs;
-			const doPosition = this.getAttribute( 'overflow' ) === "true" && numPinned > 0;
-
-			if ( doPosition ) {
-				this.setAttribute( 'positionpinnedtabs', 'true' );
-
-				const target = this.parentElement;
-				let targetRemains = widthOf( target );
-
-				// For overflow:
-				targetRemains -= 34;
-
-				for( let i = 0; i < targetChildren.length; i++ ) {
-					const sibling = targetChildren[i];
-					if ( sibling === this ) break;
-					targetRemains -= widthOf( sibling );
-				}
-
-				const scrollButtonWidthUp = widthOf( _scrollButtonUp );
-				const scrollButtonWidthDown = widthOf( _scrollButtonDown );
-				const paddingStart = tabstrip.scrollboxPaddingStart;
-
-				targetRemains -= paddingStart + scrollButtonWidthDown + scrollButtonWidthUp;
-				const widthExLeftOf = targetRemains;
-
-				let fail = false;
-				for ( let i = 0; i < numPinned; i++ ) {
-					if ( (targetRemains -= widthOf( this.childNodes[i] )) < 0 ) {
-						fail = true;
-						break;
-					}
-				}
-
-				if ( fail ) {
-					this.removeAttribute( 'positionpinnedtabs' );
-					this.style.minWidth = px( widthExLeftOf );
-					delay( () => this.style.minWidth = 'inherit', 100 );
-				} else {
-					let width = 0;
-					for ( let j = numPinned - 1; j >= 0; j-- ) {
-						const tab = this.childNodes[j];
-						width += widthOf( tab );
-						tab.style.MozMarginStart = px( -(width + scrollButtonWidthDown + paddingStart) );
-					}
-					this.style.MozPaddingStart = px( width + paddingStart );
-				}
-			} else {
-				this.removeAttribute( 'positionpinnedtabs' );
-				for ( let i = 0; i < numPinned; i++ ) this.childNodes[i].style.MozMarginStart = "";
-				this.style.MozPaddingStart = "";
-			}
-
-			if ( this._lastNumPinned !== numPinned ) {
-				this._lastNumPinned = numPinned;
-				this._handleTabSelect( false );
-			}
-		};
-		unloader( () => this.tabs._positionPinnedTabs = old );
-	},
-
+	/**
+	 * Honestly, I haven't a clue why this is used... it was used in oneliner 2.
+	 *
+	 * @param  {Function} updateLayout The update function for the layout.
+	 */
 	updateBackForward( updateLayout ) {
 		change( this.window, 'UpdateBackForwardCommands', orig =>
 			function( webnav ) { orig.call( this, webnav ); updateLayout(); } );
 	},
 
+	/**
+	 * Registers a handler for ESC(APE) keydown that blurs the urlbar.
+	 */
 	urlbarEscapeHandler() {
 		on( this.urlbar, 'keydown', event => {
 			if ( event.keyCode !== event.DOM_VK_ESCAPE ) return;
@@ -447,3 +574,5 @@ watchWindows( window => delay( () => line( window ).make(), 0 ) );
 
 // Setup Search Button:
 delay( setupSearchButton );
+
+//const _ = require( 'lodash' );

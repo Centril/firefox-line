@@ -166,8 +166,6 @@ const line = _class( {
 			// Return tab controls:
 			this.moveTabControls( CUI.AREA_TABSTRIP );
 
-			if ( this.backForward ) this.backForward.style.marginRight = '';
-
 			this.modeFlexible();
 		} );
 	},
@@ -518,19 +516,9 @@ const line = _class( {
 		// We're not flexible:
 		if ( this.urlContainer.hasAttribute( 'flex') ) this.urlContainer.removeAttribute( 'flex' );
 
-		// Fix backForward:
-		let offsetWidth = 0;
-		if ( this.backForward ) {
-			const buttonWidth = this.backForward.boxObject.width / 2,
-				  hasNot = elem => elem.hasAttribute( 'disabled' ),
-				  buttons = hasNot( this.forwardCmd ) ? 2 : (hasNot( this.backCmd ) ? 1 : 0);
-			this.backForward.style.marginRight = px( -buttonWidth * (2 - buttons) );
-			offsetWidth = -buttonWidth * buttons;
-		}
-
 		// Adjust width:
 		const f = this.urlbar.focused;
-		setWidth( this.urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] - offsetWidth ) );
+		setWidth( this.urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] ) );
 
 		// Handle overflow:
 		if ( !f ) delay( this.moveBackWidgets.bind( this ), 110 );

@@ -21,9 +21,8 @@
 const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
-const { sdks, requireJSM, CUI,
-		nullOrUndefined, on, px, byId, removeChildren, attrs, widgetMove,
-		appendChildren } = require('./utils');
+const { sdks, requireJSM, CUI, widgetMove, isNone,
+		byId, removeChildren, attrs, appendChildren, on, px, } = require('./utils');
 const { ID } = require( './ids' );
 const [ {data}, {get: _}, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
 	['self', 'l10n', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
@@ -234,7 +233,7 @@ const _setupSearchButton = manager => {
 	// Unloader: destroy widget & panel, remove addEngine listener:
 	unloader( () => {
 		CUI.destroyWidget( ids.button );
-		if ( !nullOrUndefined( pv.panel ) )	pv.panel.remove();
+		if ( !isNone( pv.panel ) )	pv.panel.remove();
 		mm.removeMessageListener( 'Link:AddSearch', addListener );
 	} );
 };

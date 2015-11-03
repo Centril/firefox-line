@@ -21,13 +21,15 @@
 // Import utils, search-engine, ids, SDK:
 const { ID }					= require( './ids' );
 const { setupSearchButton }		= require( './search-engine' );
-const {	sdks, requireJSM, CUI,
-		nullOrUndefined, noop, watchWindows, change, on, once, onMulti,
+const {	sdks, requireJSM, unloadable,
+		noop, isNone, exec, each,
+		CUI, cuiDo, widgetMove, widgetMovable,
+		watchWindows, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
-		insertAfter, byId, cuiDo, widgetMove, widgetMovable, exec, setAttr,
+		insertAfter, byId, setAttr,
 		attrs, appendChildren }	= require('./utils');
 const [ {Class: _class}, sp, {Style}, {modelFor}, {when: unloader}, {partial, delay},
-		{remove}, {isNull, isUndefined}, {attachTo, detachFrom}] = sdks(
+		{remove}, {isNull, isUndefined, isString}, {attachTo, detachFrom}] = sdks(
 	  [	'core/heritage', 'simple-prefs', 'stylesheet/style', 'model/core',
 	  	'system/unload', 'lang/functional', 'util/array', 'lang/type', 'content/mod' ] );
 
@@ -45,15 +47,14 @@ const tabsStartListener = () => {
 		sp.prefs.tabsStartPos = p.position;
 	};
 
-	const li = {
+	unloadable( l => CUI.addListener( l ), l => CUI.removeListener( l ), {
 		onWidgetAdded: listener,
 		onWidgetRemoved: listener,
 		onWidgetMoved: listener
-	};
-
-	CUI.addListener( li );
-	unloader( () => CUI.removeListener( li ) );
+	} );
 };
+
+const spOn = (k, fn) => sp.on( k, exec( () => fn( sp.prefs[k] ) ) );
 
 /**
  * Creates a line instance for a window,
@@ -84,8 +85,7 @@ const line = _class( {
 		this.browser = window.gBrowser;
 
 		// Get aliases to various elements:
-		Object.keys( ID ).filter( k => typeof ID[k] === 'string' )
-						 .forEach( k => this[k] = this.id( ID[k] ) );
+		each( ID, (k, v) => isString( v ) && (this[k] = this.id( v )) );
 
 		// Rememeber flex value of urlContainer:
 		this.oldFlex = this.urlContainer.getAttribute( 'flex' );
@@ -239,8 +239,8 @@ const line = _class( {
 	 * Improves #tabbrowser-tabs method _positionPinnedTabs.
 	 */
 	fixPositionPinnedTabs() {
-		const old = this.tabs._positionPinnedTabs;
-		this.tabs._positionPinnedTabs = function() {
+		const set = x => this.tabs._positionPinnedTabs = x;
+		unloadable( old => set( function() {
 			const widthOf = elem => elem.getBoundingClientRect().width;
 			const numPinned = this.tabbrowser._numPinnedTabs;
 			const doPosition = this.getAttribute( 'overflow' ) === "true" && numPinned > 0;
@@ -313,8 +313,7 @@ const line = _class( {
 				this._lastNumPinned = numPinned;
 				this._handleTabSelect( false );
 			}
-		};
-		unloader( () => this.tabs._positionPinnedTabs = old );
+		} ), set, this.tabs._positionPinnedTabs );
 	},
 
 	// -------------------------------------------------------------------------
@@ -325,27 +324,20 @@ const line = _class( {
 	 * Registers handlers for the user preferences tabMinWidth & tabMaxWidth:s.
 	 */
 	tabWidthHandler() {
-		[['min', 'tabMinWidth'], ['max', 'tabMaxWidth']].forEach( e => {
-			const saved = {};
+		each( {min: 'tabMinWidth', max: 'tabMaxWidth'}, (k, v) => {
 			// Deatch current attached style modification if any.
-			const detach = () => {
-				if ( !nullOrUndefined( saved[e[1]] ) )
-					saved[e[1]] = this.detach( saved[e[1]] );
+			const detach = saved => {
+				if ( !isNone( saved[v] ) )
+					saved[v] = this.detach( saved[v] );
 			};
-
-			// Detach on unload.
-			unloader( detach );
-
-			// Make, apply and add listener:
-			sp.on( e[1], exec( () => {
-				detach();
-				const pref = sp.prefs[e[1]];
+			unloadable( saved => spOn( v, pref => {
+				detach( saved );
 				if ( pref !== 0 )
-					saved[e[1]] = this.attach( new Style( { source:
+					saved[v] = this.attach( new Style( { source:
 					`.tabbrowser-tab:not([pinned]) {
-						${e[0]}-width:${pref}px !important;
+						${k}-width:${pref}px !important;
 					}` } ) );
-			} ) );
+			} ), detach, {} );
 		} );
 	},
 
@@ -396,8 +388,7 @@ const line = _class( {
 			updateOff = [];
 		};
 
-		sp.on( 'retractIdentityLabel', exec( () =>
-			sp.prefs.retractIdentityLabel ? bind() : unbind() ) );
+		spOn( 'retractIdentityLabel', pref => pref ? bind() : unbind() );
 	},
 
 	/**
@@ -405,17 +396,16 @@ const line = _class( {
 	 * Changes urlbar to the right of tabs or left depending on sp.prefs.urlbarRight.
 	 */
 	urlbarRLHandler() {
-		sp.on( 'urlbarRight', exec( () => {
+		spOn( 'urlbarRight', r => {
 			const ids = [ID.urlContainer, ID.newSearch.button],
 					p = ids.map( id => CUI.getPlacementOfWidget( id ) ),
-					d = p[0].position - (p[1] ? p[1].position : 0),
-					r = sp.prefs.urlbarRight;
+					d = p[0].position - (p[1] ? p[1].position : 0);
 
 			const anchor = r ? ID.allTabs : ID.tabs;
 			widgetMove( ids[0], anchor, r ? 1 : -1 );
 			if ( Math.abs( d ) === 1 && p[0].area === p[1].area )
 				widgetMove( ids[1], ids[0], d < 1 ? 1 : 0 );
-		} ) );
+		} );
 	},
 
 	// -------------------------------------------------------------------------
@@ -514,7 +504,7 @@ const line = _class( {
 	 */
 	modeNonFlexible( focusedPref ) {
 		// We're not flexible:
-		if ( this.urlContainer.hasAttribute( 'flex') ) this.urlContainer.removeAttribute( 'flex' );
+		this.urlContainer.removeAttribute( 'flex' );
 
 		// Adjust width:
 		const f = this.urlbar.focused;
@@ -562,5 +552,3 @@ watchWindows( window => delay( () => line( window ).make(), 0 ) );
 
 // Setup Search Button:
 delay( setupSearchButton );
-
-//const _ = require( 'lodash' );

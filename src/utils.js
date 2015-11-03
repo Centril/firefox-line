@@ -18,12 +18,9 @@
  */
 'use strict';
 
-const requireJSM = jsm => require( `resource://${jsm}.jsm` );
-exports.requireJSM = requireJSM;
-
-// Get CUI, Services:
-const { CustomizableUI: CUI } = requireJSM( '/modules/CustomizableUI' );
-exports.CUI = CUI;
+// -------------------------------------------------------------------------
+// SDK & JSM Loading:
+// -------------------------------------------------------------------------
 
 /**
  * Returns a list of SDKs.
@@ -31,17 +28,44 @@ exports.CUI = CUI;
  * @param  {String[]}  list  A string list of sdks without 'sdk/' path prefix.
  * @return {Object[]}        The SDKs.
  */
-const sdks = list => list.map( v => require( 'sdk/' + v ) );
+const sdks = list => list.map( v => require( `sdk/${v}` ) );
 exports.sdks = sdks;
 
+const requireJSM = jsm => require( `resource://${jsm}.jsm` );
+exports.requireJSM = requireJSM;
+
+// -------------------------------------------------------------------------
+// Load everything this unit needs:
+// -------------------------------------------------------------------------
+
+// Get CUI, Services:
+const { CustomizableUI: CUI } = requireJSM( '/modules/CustomizableUI' );
+exports.CUI = CUI;
+
 const [	events, window_utils, {browserWindows: windows}, {viewFor}, {when: unloader},
-		{partial, curry, compose}, {isNull, isUndefined, isFunction}] = sdks( [
-		'dom/events', 'window/utils', 'windows', 'view/core',
-		'system/unload', 'lang/functional', 'lang/type'] );
+		{partial, curry}, {isNull, isUndefined, isFunction, isArray}] = sdks(
+	  [ 'dom/events', 'window/utils', 'windows', 'view/core', 'system/unload',
+		'lang/functional', 'lang/type'] );
+
+// -------------------------------------------------------------------------
+// General purpose functions:
+// -------------------------------------------------------------------------
 
 /**
- * If v is function, call it with rest of parameters,
- * otherwise: use v.
+ * A function that takes nothing and does nothing.
+ */
+const noop = () => {};
+exports.noop = noop;
+
+const each = (obj, fn) => {
+	if ( isArray( obj ) ) return obj.forEach( fn );
+	Object.keys( obj ).forEach( k => fn( k, obj[k] ) );
+};
+exports.each = each;
+
+/**
+ * Returns the value of v called with any additional arguments
+ * if _.isFunction(v) holds, otherwise it returns v.
  *
  * @param  {*|function}  v     A value, or a function.
  * @param  {...*}        args  Any other arguments.
@@ -51,10 +75,56 @@ const voc = (v, ...args) => isFunction( v ) ? v( v, ...args ) : v;
 exports.voc = voc;
 
 /**
- * A function that takes nothing and does nothing.
+ * Returns true if the value v is either null or undefined.
+ *
+ * @param  {*}  v     The value.
+ * @return {bool}     True if either null or undefined.
  */
-const noop = () => {};
-exports.noop = noop;
+const isNone = v => isNull( v ) || isUndefined( v );
+exports.isNone = isNone;
+
+/**
+ * For each of object {K, V} obj.method( K, V ).
+ * If V is a function, it will be replaced with call:
+ * V( k, obj ).
+ *
+ * @param  {string} method     Name of a function that exists on obj.
+ * @param  {Object} obj        An object to call method on.
+ * @param  {Object} props      An object to map each K, V pair, and do... see above.
+ */
+const methodKV = curry( (method, obj, props) => {
+	each( (v, k) => obj[method]( k, voc( v, k, obj ) ) );
+	return obj;
+} );
+exports.methodKV = methodKV;
+
+/**
+ * Executes fn with args and then returns fn.
+ *
+ * @param  {Function}  fn    The function to execute & return.
+ * @param  {...*}      args  The arguments to execute fn with.
+ * @return {Function}        The function fn.
+ */
+const exec = (fn, ...args) => { fn( ...args ); return fn; };
+exports.exec = exec;
+
+// -------------------------------------------------------------------------
+// Windows:
+// -------------------------------------------------------------------------
+
+/**
+ * Executes fn, passed args and
+ * registers unload that is called with args on unload.
+ *
+ * @param  {Function}  fn     The function to call.
+ * @param  {Function}  unload The function to unload what fn did with.
+ * @param  {...*} args        The arguments to pass to fn & unload.
+ */
+const unloadable = (fn, unload, ...args) => {
+	fn( ...args );
+	unloader( partial( unload, args ) );
+};
+exports.unloadable = unloadable;
 
 /**
  * Returns true if the given object is a Window.
@@ -66,13 +136,24 @@ const isWindow = window => !isUndefined( window.window ) && !isUndefined( window
 exports.isWindow = isWindow;
 
 /**
- * Returns true if the value v is either null or undefined.
+ * Apply a callback to each open and new browser windows.
  *
- * @param  {*}  v     The value.
- * @return {bool}     True if either null or undefined.
+ * @usage watchWindows( callback ): Apply a callback to each browser window.
+ * @param {function} callback: 1-parameter function that gets a browser window.
  */
-const nullOrUndefined = v => isNull( v ) || isUndefined( v );
-exports.nullOrUndefined = nullOrUndefined;
+const watchWindows = callback => {
+	// Add functionality to existing windows
+	each( window_utils.windows( 'navigator:browser', {includePrivate: true} ), callback );
+
+	// Watch for new browser windows opening:
+	unloadable( l => windows.on( 'open', l ), l => windows.off( 'open', l ),
+		w => callback( viewFor( w ) ) );
+}
+exports.watchWindows = watchWindows;
+
+// -------------------------------------------------------------------------
+// Listeners:
+// -------------------------------------------------------------------------
 
 /**
  * Replace a value of a property with another value or a function of the original value.
@@ -82,11 +163,8 @@ exports.nullOrUndefined = nullOrUndefined;
  * @param  {string} prop   The property to change value of.
  * @param  {*}      val    The value to set.
  */
-const change = (obj, prop, val) => {
-	let orig = obj[prop];
-	obj[prop] = voc( val, orig );
-	unloader( () => obj[prop] = orig );
-}
+const change = (obj, prop, val) =>
+	unloadable( orig => obj[prop] = voc( val, orig ), orig => obj[prop] = orig, obj[prop] );
 exports.change = change;
 
 const bindListener = (binder, element, type, listener, capture) => {
@@ -142,22 +220,9 @@ const onMulti = (element, types, listener, capture = false) =>
 	types.map( type => on( element, type, listener ) );
 exports.onMulti = onMulti;
 
-/**
- * Apply a callback to each open and new browser windows.
- *
- * @usage watchWindows( callback ): Apply a callback to each browser window.
- * @param {function} callback: 1-parameter function that gets a browser window.
- */
-const watchWindows = callback => {
-	// Add functionality to existing windows
-	window_utils.windows( 'navigator:browser', {includePrivate: true} ).forEach( callback );
-
-	// Watch for new browser windows opening:
-	const listener = window => callback( viewFor( window ) );
-	windows.on( 'open', listener );
-	unloader( () => windows.off( 'open', listener ) );
-}
-exports.watchWindows = watchWindows;
+// -------------------------------------------------------------------------
+// Dimensions:
+// -------------------------------------------------------------------------
 
 /**
  * Adds px unit to a value.
@@ -179,6 +244,22 @@ const setWidth = curry( (element, width) => element.style.width = width );
 exports.setWidth = setWidth;
 
 /**
+ * Computes the real width of an element including margins.
+ *
+ * @param  {Element}  e  The element to get width of.
+ * @return {Number}      The computed width.
+ */
+const realWidth = (window, e) => {
+	const {marginLeft, marginRight} = e.currentStyle || window.getComputedStyle( e );
+	return e.boxObject.width + parseFloat( marginLeft ) + parseFloat( marginRight );
+}
+exports.realWidth = realWidth;
+
+// -------------------------------------------------------------------------
+// DOM:
+// -------------------------------------------------------------------------
+
+/**
  * Inserts a DOM Element after the given reference Element, or at the end if reference Element is null.
  *
  * @param  {ELement}       element    The element to insert.
@@ -198,21 +279,6 @@ const byId = curry( (window, id) => (isWindow( window ) ? window.document : wind
 	.getElementById( id ) );
 exports.byId = byId;
 
-/**
- * For each of object {K, V} obj.method( K, V ).
- * If V is a function, it will be replaced with call:
- * V( k, obj ).
- *
- * @param  {string} method     Name of a function that exists on obj.
- * @param  {Object} obj        An object to call method on.
- * @param  {Object} props      An object to map each K, V pair, and do... see above.
- */
-const methodKV = curry( (method, obj, props) => {
-	Object.keys( props ).forEach( k => obj[method]( k, voc( props[k], k, obj ) ) );
-	return obj;
-} );
-exports.methodKV = methodKV;
-
 exports.attrs = methodKV( 'setAttribute' );
 
 /**
@@ -223,11 +289,11 @@ exports.attrs = methodKV( 'setAttribute' );
  * @param  {Element}  elem  The element to set attribute on.
  * @return {*}              The old attribute value.
  */
-const setAttr = (attr, val, elem) => {
+const setAttr = curry( (attr, val, elem) => {
 	const old = elem.getAttribute( 'removable' );
 	elem.setAttribute( 'removable', val );
 	return old;
-};
+} );
 exports.setAttr = setAttr;
 
 /**
@@ -246,6 +312,27 @@ exports.removeChildren = removeChildren;
  */
 const appendChild = parent => parent.appendChild.bind( parent );
 exports.appendChild = appendChild;
+
+/**
+ * Appends array of DOM elements in arr to parent.
+ * Returns the passed array.
+ *
+ * @param  {Element}    parent The element to append children to.
+ * @param  {Element[]}  arr    The elements to append.
+ * @return {Element[]}         The elements to append.
+ */
+const appendChildren = (parent, arr) => {
+	const doc = parent.ownerDocument;
+	const frag = doc.createDocumentFragment();
+	arr.forEach( e => appendChild( frag ) );
+	parent.appendChild( frag );
+	return arr;
+};
+exports.appendChildren = appendChildren;
+
+// -------------------------------------------------------------------------
+// CUI:
+// -------------------------------------------------------------------------
 
 /**
  * Executes fn in a CUI batch update.
@@ -272,7 +359,7 @@ exports.cuiDo = cuiDo;
  */
 const widgetMovable = (id, _do) => {
 	const nodes = CUI.getWidget( id ).instances.map( i => i.node );
-	const r = nodes.map( partial( setAttr, 'removable', true ) );
+	const r = nodes.map( setAttr( 'removable', true ) );
 	_do( id, nodes );
 	nodes.forEach( (n, i) => n.setAttribute( 'removable', r[i] ) );
 };
@@ -291,42 +378,3 @@ const widgetMove = (id, relId, relMove = 1 ) =>
 	CUI.moveWidgetWithinArea( id, Math.max( 0,
 		CUI.getPlacementOfWidget( relId ).position + relMove ) );
 exports.widgetMove = widgetMove;
-
-/**
- * Executes fn with args and then returns fn.
- *
- * @param  {Function}  fn    The function to execute & return.
- * @param  {...*}      args  The arguments to execute fn with.
- * @return {Function}        The function fn.
- */
-const exec = (fn, ...args) => { fn( ...args ); return fn; };
-exports.exec = exec;
-
-/**
- * Computes the real width of an element including margins.
- *
- * @param  {Element}  e  The element to get width of.
- * @return {Number}      The computed width.
- */
-const realWidth = (window, e) => {
-	const {marginLeft, marginRight} = e.currentStyle || window.getComputedStyle( e );
-	return e.boxObject.width + parseFloat( marginLeft ) + parseFloat( marginRight );
-}
-exports.realWidth = realWidth;
-
-/**
- * Appends array of DOM elements in arr to parent.
- * Returns the passed array.
- *
- * @param  {Element}    parent The element to append children to.
- * @param  {Element[]}  arr    The elements to append.
- * @return {Element[]}         The elements to append.
- */
-const appendChildren = (parent, arr) => {
-	const doc = parent.ownerDocument;
-	const frag = doc.createDocumentFragment();
-	arr.forEach( e => frag.appendChild( e ) );
-	parent.appendChild( frag );
-	return arr;
-};
-exports.appendChildren = appendChildren;

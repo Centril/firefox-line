@@ -324,7 +324,7 @@ exports.appendChild = appendChild;
 const appendChildren = (parent, arr) => {
 	const doc = parent.ownerDocument;
 	const frag = doc.createDocumentFragment();
-	arr.forEach( e => appendChild( frag ) );
+	arr.forEach( appendChild( frag ) );
 	parent.appendChild( frag );
 	return arr;
 };

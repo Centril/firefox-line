@@ -93,7 +93,8 @@ exports.isNone = isNone;
  * @param  {Object} props      An object to map each K, V pair, and do... see above.
  */
 const methodKV = curry( (method, obj, props) => {
-	each( (v, k) => obj[method]( k, voc( v, k, obj ) ) );
+	const m = obj[method].bind( obj );
+	each( props, (k, v) => m( k, voc( v, k, obj ) ) );
 	return obj;
 } );
 exports.methodKV = methodKV;

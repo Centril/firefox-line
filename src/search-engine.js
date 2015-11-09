@@ -27,14 +27,10 @@ const { ID } = require( './ids' );
 const [ {data}, {get: _}, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
 	['self', 'l10n', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
 
-// Get PlacesUtils, strings, search, mm:
-const { PlacesUtils: pu } = requireJSM( 'gre/modules/PlacesUtils' );
+// Get strings, search, mm:
 const { Services: { strings, search, mm } } = requireJSM( 'gre/modules/Services' );
 
-const winDoc = event => {
-	const doc = event.target.ownerDocument;
-	return [doc, doc.defaultView];
-}
+const docFrom = event => event.target.ownerDocument;
 
 const enginesManager = () => {
 	// The services we are using: (nsIObserverService, nsIBrowserSearchService)
@@ -76,7 +72,7 @@ const _setupSearchButton = manager => {
 
 	const engineCommand = event => {
 		const { gURLBar: ub, whereToOpenLink, openUILinkIn,
-				KeyboardEvent, MouseEvent} = winDoc( event )[1];
+				KeyboardEvent, MouseEvent} = docFrom( event ).defaultView;
 
 		// Handle clicks on an engine, get engine first:
 		const engine = manager.byName( event.target.getAttribute( 'engine' ) );
@@ -128,7 +124,7 @@ const _setupSearchButton = manager => {
 	}
 
 	const updater = event => {
-		const [doc, window] = winDoc( event );
+		const doc = docFrom( event );
 
 		removeChildren( pv.engines );
 		removeChildren( pv.add );
@@ -138,17 +134,24 @@ const _setupSearchButton = manager => {
 		const engines = [for (e of manager.engines) if ( e.identifier !== curr.identifier ) e];
 		engines.unshift( curr );
 
-		const image = engine => pu.getImageURLForResolution( window, engine.iconURI.spec );
+		const image = engine => engine.iconURI.spec;
 		const label = (engine, format) => sb.formatStringFromName( format, [engine.name], 1 );
 		const slugRegxp = / /g;
 		const slug = engine => engine.name.replace( slugRegxp, '-' );
+		const button = (cmd, props) => {
+			const b = attrs( doc.createElementNS( nsXUL, 'button' ), props );
+			on( b, 'command', cmd, true );
+			return b;
+		};
+
+		const inPanel = CUI.getPlacementOfWidget( ids.button ).area === CUI.AREA_PANEL;
 
 		// Place out engines:
-		const maxCol = engines.length % 3 === 0 ? 3 : engines.length >= 16 ? 4 : 2;
+		const maxCol = inPanel ? 4 : engines.length % 3 === 0 ? 3 : engines.length >= 16 ? 4 : 2;
 		appendChildren( pv.engines, engines.map( (engine, i, all) => {
 			const s = [i === 0, (i + 1) % maxCol === 0,
 				Math.ceil( (i + 1) / maxCol ) === Math.ceil( all.length / maxCol )];
-			const b = attrs( doc.createElementNS( nsXUL, 'button' ), {
+			return button( engineCommand, {
 				id: 'searchpanel-engine-one-off-item-' + slug( engine ),
 				class: ['searchbar-engine-one-off-item']
 					.concat( ['current', 'last-of-row', 'last-row'].filter( (c, i) => s[i] ) )
@@ -160,15 +163,12 @@ const _setupSearchButton = manager => {
 				width: '59',
 				engine: engine.name
 			} );
-			on( b, 'command', engineCommand, true );
-
-			return b;
 		} ) );
 
 		// Place out 'add-engines':
 		appendChildren( pv.add, addEngineStack.slice().reverse().map( ({uri, engine}, i) => {
 			const l = label( engine, 'cmd_addFoundEngine' );
-			const b = attrs( doc.createElementNS( nsXUL, 'button' ), {
+			return button( addCommand, {
 				id: 'searchbar-add-engine-' + slug( engine ),
 				class: 'addengine-item',
 				label: l,
@@ -180,17 +180,22 @@ const _setupSearchButton = manager => {
 				image: image( engine ),
 				engine: addEngineStack.length - 1 - i
 			} );
-			on( b, 'command', addCommand, true );
-			return b;
 		} ) );
 
 		// Adjust width & height:
+		if ( inPanel ) {
+			[pv.body, pv.engines, pv.add].forEach( v => {
+				v.removeAttribute( 'width' );
+				v.removeAttribute( 'style' );
+			} );
+			return;	
+		}
 		const width = px( 62 * maxCol );
 		const height = 33 * Math.ceil( engines.length / maxCol );
 		attrs( pv.engines, { height: px( height ) } );
 		[pv.body, pv.engines, pv.add].forEach( v => {
-			attrs( pv.body, { width: width } );
-			pv.body.style.maxWidth = width;
+			attrs( v, { width: width } );
+			v.style.maxWidth = width;
 		} );
 	};
 
@@ -199,7 +204,7 @@ const _setupSearchButton = manager => {
 
 	const create = doc => {
 		pv = {
-			panel:	attrs( doc.createElementNS( nsXUL, 'panelview' ), { id: ids.view, flex: '1' } ),
+			panel:	attrs( doc.createElementNS( nsXUL, 'panelview' ), { 'id': ids.view, 'flex': '1' } ),
 			body:	attrs( doc.createElementNS( nsXUL, 'vbox' ), { class: 'panel-subview-body' } ),
 			label:	attrs( doc.createElementNS( nsXUL, 'label' ),
 						{ class: 'panel-subview-header', value: 'Search with providers'} ),

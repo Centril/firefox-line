@@ -183,6 +183,11 @@
 	/* Reduce space between caption buttons and menu button: */
 	.titlebar-placeholder[type='caption-buttons'] { margin-left:0px; }
 
+	#main-window[sizemode="maximized"] #titlebar-buttonbox .titlebar-button {
+		padding-top:9px !important;
+		padding-bottom: 10px !important;
+	}
+
 	.tabbrowser-tab:not([pinned]) { width:auto !important; }
 
 	.tabbrowser-tabs:not([positionpinnedtabs]) {

@@ -85,6 +85,7 @@ const line = _class( {
 
 		this.urlbar = window.gURLBar;
 		this.browser = window.gBrowser;
+		this.doc = window.document;
 
 		// Get aliases to various elements:
 		each( ID, (k, v) => isString( v ) && (this[k] = this.id( v )) );
@@ -235,10 +236,10 @@ const line = _class( {
 		spOn( 'extraDragButton', use => {
 			if ( use ) {
 				insertAfter( elem = attrs(
-					this.window.document.createElementNS( nsXUL, 'toolbarbutton' ), {
-					id: 'firefox-line-drag-button',
+					this.doc.createElementNS( nsXUL, 'toolbarbutton' ), {
+					id: ID.drag.button,
 					class: 'toolbarbutton-1'
-				} ), this.id( "PanelUI-button" ) );
+				} ), this.panelUI );
 				new WindowDraggingElement( elem );
 				canUnload = true;
 				unloader( unload );

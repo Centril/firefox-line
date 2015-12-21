@@ -56,6 +56,8 @@ const tabsStartListener = () => {
 
 const spOn = (k, fn) => sp.on( k, exec( () => fn( sp.prefs[k] ) ) );
 
+const isFocus = evt => evt.type === 'focus';
+
 /**
  * Creates a line instance for a window,
  * it has one public method: .make().
@@ -353,11 +355,12 @@ const line = _class( {
 			  reset = partial( setLWidth, 'auto' );
 
 		let oldWidth, resizeOff = noop, updateOff = [];
-		
+		let lastFocusState = false;
+
 		unloader( reset );
 
 		const resize = () => {
-			if ( this.urlbar.focused ) return;
+			if ( lastFocusState ) return;
 			noCrop();
 			reset();
 			oldWidth = getComputedStyle( this.idLabel ).width;
@@ -365,8 +368,10 @@ const line = _class( {
 			setLWidth( oldWidth );
 		};
 
-		const update = () => {
-			if ( this.urlbar.focused ) {
+		const update = evt => {
+			let lastFocusState = isFocus( evt );
+
+			if ( lastFocusState ) {
 				noCrop();
 				oldWidth = getLWidth();
 				setLWidth( px( '0' ) );
@@ -415,20 +420,35 @@ const line = _class( {
 	/**
 	 * Returns an object with two methods {change, update} that:
 	 * { change: the current behavior of update() depending on sp.prefs.urlbarMode,
+	 * 			 and also executes update() immediately.
 	 *   update: executes the layout mode depending on what change() set. }
 	 *
 	 * @return {object}  The object specified above.
 	 */
 	layoutManager() {
-		// Make a switch of all the modes and pick the current one:
-		let layoutUpdater;
+		// Make a switch of all the modes:
 		const layouts = {
 			fixed:		this.modeFixed.bind( this ),
 			sliding:	this.modeSliding.bind( this ),
 			flexible:	this.modeFlexible.bind( this )
 		};
-		return {change: exec( layoutUpdater = exec( layouts[sp.prefs.urlbarMode] ) ),
-				update: () => layoutUpdater()};
+
+		let layoutUpdater;
+		let lastFocusState = false;
+
+		const manager = {
+			change() {
+				layoutUpdater = layouts[sp.prefs.urlbarMode];
+				this.update();
+			},
+			update( evt ) {
+				if ( evt ) lastFocusState = isFocus( evt );
+				layoutUpdater( lastFocusState );
+			}
+		};
+
+		manager.change();
+		return manager;
 	},
 
 	/**
@@ -465,7 +485,7 @@ const line = _class( {
 	 * and on resize so we don't overflow CUI.AREA_NAVBAR.
 	 */
 	imposeMaxWidth() {
-		const s = this.urlContainer.style
+		const s = this.urlContainer.style;
 		const onResize = () => s.maxWidth = px( realWidth( this.window, this.navBarTarget ) );
 		delay( onResize, 100 );
 		this.resizer( onResize );
@@ -474,8 +494,10 @@ const line = _class( {
 	/**
 	 * The layout mode for sp.prefs.urlbarMode === 'flexible'.
 	 * Makes the urlbar flex, and resets all position, width & max-width styles.
+	 *
+	 * @param  {boolean} focused      If urlbar is focused or not - ignored.
 	 */
-	modeFlexible() {
+	modeFlexible( focused ) {
 		this.urlContainer.setAttribute( 'flex', this.oldFlex );
 		const s = this.urlContainer.style;
 		s.position = '';
@@ -487,31 +509,35 @@ const line = _class( {
 	 * The layout mode for sp.prefs.urlbarMode === 'fixed'.
 	 * Makes the urlbar a fixed width,
 	 * specified by preference: sp.prefs.urlbarBlur.
+	 *
+	 * @param  {boolean} focused      If urlbar is focused or not.
 	 */
-	modeFixed() { this.modeNonFlexible( 'urlbarBlur' ); },
+	modeFixed( focused ) { this.modeNonFlexible( focused, 'urlbarBlur' ); },
 
 	/**
 	 * The layout mode for sp.prefs.urlbarMode === 'sliding'.
 	 * Makes the urlbars width depend on if the urlbar is focused or not,
 	 * specified by preferences: sp.prefs.urlbarFocused and sp.prefs.urlbarBlur.
+	 *
+	 * @param  {boolean} focused      If urlbar is focused or not.
 	 */
-	modeSliding() { this.modeNonFlexible( 'urlbarFocused' ); },
+	modeSliding( focused ) { this.modeNonFlexible( focused, 'urlbarFocused' ); },
 
 	/**
 	 * (Helper) Handles mode layout for other modes than modeFlexible.
 	 *
+	 * @param  {boolean} focused      If urlbar is focused or not.
 	 * @param  {string}  focusedPref  Name of the preference to use when urlbar is focused for width.
 	 */
-	modeNonFlexible( focusedPref ) {
+	modeNonFlexible( focused, focusedPref ) {
 		// We're not flexible:
 		this.urlContainer.removeAttribute( 'flex' );
 
 		// Adjust width:
-		const f = this.urlbar.focused;
-		setWidth( this.urlContainer, px( sp.prefs[f ? focusedPref : 'urlbarBlur'] ) );
+		setWidth( this.urlContainer, px( sp.prefs[focused ? focusedPref : 'urlbarBlur'] ) );
 
 		// Handle overflow:
-		if ( !f ) delay( this.moveBackWidgets.bind( this ), 110 );
+		if ( !focused ) delay( this.moveBackWidgets.bind( this ), 110 );
 	},
 
 	// -------------------------------------------------------------------------

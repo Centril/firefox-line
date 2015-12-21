@@ -139,19 +139,25 @@
 	#nav-bar #new-tab-button { width: 26px; }
 	.tabs-newtab-button, #nav-bar #new-tab-button, #nav-bar toolbarpaletteitem > #new-tab-button {
 		list-style-image: url('chrome://browser/skin/tabbrowser/newtab.png') !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/newtab.svg') !important;
 		-moz-image-region: auto !important;
 	}
 	#nav-bar[brighttext] .tabs-newtab-button, #nav-bar[brighttext] #new-tab-button, #nav-bar[brighttext] toolbarpaletteitem > #new-tab-button {
 		list-style-image: url('chrome://browser/skin/tabbrowser/newtab-inverted.png') !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/newtab-inverted.svg') !important;
 	}
 	#nav-bar[brighttext] #alltabs-button, #nav-bar[brighttext] toolbarpaletteitem > #alltabs-button {
 		list-style-image: url('chrome://browser/skin/toolbarbutton-dropdown-arrow-inverted.png') !important;
 	}
-	#nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-up, #nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-down {
-		list-style-image: url('chrome://browser/skin/tabbrowser/tab-arrow-left-inverted.png') !important;
+	#nav-bar #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-up,
+	#nav-bar #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-down {
+		list-style-image: url('chrome://browser/skin/tabbrowser/tab-arrow-left.png') !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/tab-arrow-left.svg') !important;
 	}
-	#nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-up, #nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-down {
+	#nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-up,
+	#nav-bar[brighttext] #tabbrowser-tabs > .tabbrowser-arrowscrollbox > .scrollbutton-down {
 		list-style-image: url('chrome://browser/skin/tabbrowser/tab-arrow-left-inverted.png') !important;
+		list-style-image: url('chrome://browser/skin/tabbrowser/tab-arrow-left-inverted.svg') !important;
 	}
 	/* End: Copied from #TabsToolbar*/
 

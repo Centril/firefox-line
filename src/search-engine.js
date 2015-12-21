@@ -22,8 +22,9 @@ const MAX_ADD_ENGINES = 5;
 
 // Import utils, ids, SDK:
 const { sdks, requireJSM, CUI, widgetMove, isNone,
-		byId, removeChildren, attrs, appendChildren, on, px, } = require('./utils');
-const { ID } = require( './ids' );
+		byId, nsXUL, removeChildren, attrs, appendChildren,
+		on, px } = require('./utils');
+const { ID }	 = require( './ids' );
 const [ {data}, {get: _}, prefs, tabs, clip, {when: unloader}, {isUndefined} ] = sdks(
 	['self', 'l10n', 'preferences/service', 'tabs', 'clipboard', 'system/unload', 'lang/type'] );
 
@@ -54,9 +55,7 @@ let pv = {};
 const _setupSearchButton = manager => {
 	const ids = ID.newSearch,
 		  trimIf = val => (val || '').trim(),
-		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' ),
-		  // This used to be used in function make(), but AMO validator complained, so we oblige:
-		  nsXUL = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
+		  sb = strings.createBundle( 'chrome://browser/locale/search.properties' );
 
 	let addEngineStack = [];
 	const addListener = msg => manager.add( msg.data.engine.href, { onSuccess( e ) {

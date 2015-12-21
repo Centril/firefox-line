@@ -260,6 +260,9 @@ exports.realWidth = realWidth;
 // DOM:
 // -------------------------------------------------------------------------
 
+const nsXUL = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
+exports.nsXUL = nsXUL;
+
 /**
  * Inserts a DOM Element after the given reference Element, or at the end if reference Element is null.
  *

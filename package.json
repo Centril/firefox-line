@@ -73,5 +73,12 @@
 		"description": "Whether or not to retract/slide back the identify label (for example the green label you see on secure connections).",
 		"type": "bool",
 		"value": true
+	},
+	{
+		"name": "extraDragButton",
+		"title": "Extra drag button?",
+		"description": "Whether or not to show an extra drag button if you're having trouble dragging the window.",
+		"type": "bool",
+		"value": false
 	}]
 }

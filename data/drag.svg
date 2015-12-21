@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 19.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.0" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 64 64" style="enable-background:new 0 0 64 64;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;}
+</style>
+<symbol  id="Arrow_26" viewBox="-22.9 -13.1 45.7 26.3">
+	<polygon class="st0" points="-22.9,-13.1 22.9,-13.1 22.9,13.1 -22.9,13.1 	"/>
+	<g>
+		<polygon points="-22.9,-6.3 0.1,-6.3 0.1,-13.1 22.9,0 0.1,13.1 0.1,6.3 -22.9,6.3 		"/>
+	</g>
+</symbol>
+<use xlink:href="#Arrow_26"  width="45.7" height="26.3" x="-22.9" y="-13.1" transform="matrix(-5.181068e-011 0.577 -0.577 -5.181068e-011 31.9285 50.8094)" style="overflow:visible;"/>
+<use xlink:href="#Arrow_26"  width="45.7" height="26.3" x="-22.9" y="-13.1" transform="matrix(2.590534e-011 -0.577 0.577 2.590534e-011 32 13.1905)" style="overflow:visible;"/>
+<use xlink:href="#Arrow_26"  width="45.7" height="26.3" x="-22.9" y="-13.1" transform="matrix(-0.577 0 0 -0.577 13.1905 32)" style="overflow:visible;"/>
+<use xlink:href="#Arrow_26"  width="45.7" height="26.3" x="-22.9" y="-13.1" transform="matrix(0.577 0 0 0.577 50.8095 32)" style="overflow:visible;"/>
+</svg>

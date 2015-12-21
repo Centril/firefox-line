@@ -17,6 +17,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 @-moz-document url-prefix('chrome://browser/content/browser.xul') {
+	#firefox-line-drag-button > .toolbarbutton-icon {
+		list-style-image: url('drag.svg');
+		-moz-image-region: rect(0px, 15px, 15px, 0px);
+	}
+
+	#nav-bar[brighttext] #firefox-line-drag-button > .toolbarbutton-icon {
+		list-style-image: url('drag-inverted.svg');
+	}
+}
+
+@-moz-document url-prefix('chrome://browser/content/browser.xul') {
 	#nav-bar-customization-target > #firefox-line-search-button { width: 32px; }
 
 	#firefox-line-search-button > .toolbarbutton-icon {

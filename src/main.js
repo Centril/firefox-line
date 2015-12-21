@@ -26,7 +26,7 @@ const {	sdks, requireJSM, unloadable,
 		CUI, cuiDo, widgetMove, widgetMovable,
 		watchWindows, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
-		insertAfter, byId, setAttr,
+		nsXUL, insertAfter, byId, setAttr,
 		attrs, appendChildren }	= require('./utils');
 const [ {Class: _class}, sp, {Style}, {modelFor}, {when: unloader}, {partial, delay},
 		{remove}, {isNull, isUndefined, isString}, {attachTo, detachFrom}] = sdks(
@@ -148,6 +148,9 @@ const line = _class( {
 		// Detect escaping from the location bar when nothing changes:
 		this.urlbarEscapeHandler();
 
+		// Extra drag button:
+		this.extraDragButton();
+
 		// Clean up various changes when the add-on unloads:
 		unloader( () => {
 			// Remove our style:
@@ -215,6 +218,35 @@ const line = _class( {
 	resizer( listener ) { return this.on( 'resize', listener ); },
 
 	// -------------------------------------------------------------------------
+	// (Private) Extra drag button for users that want it, disabled by default:
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Extra drag button...
+	 */
+	extraDragButton() {
+		let elem;
+		let canUnload = false;
+		let unload = () => {
+			if ( canUnload && elem ) elem.remove();
+			canUnload = false;
+		};
+
+		spOn( 'extraDragButton', use => {
+			if ( use ) {
+				insertAfter( elem = attrs(
+					this.window.document.createElementNS( nsXUL, 'toolbarbutton' ), {
+					id: 'firefox-line-drag-button',
+					class: 'toolbarbutton-1'
+				} ), this.id( "PanelUI-button" ) );
+				new WindowDraggingElement( elem );
+				canUnload = true;
+				unloader( unload );
+			} else unload();
+		} );
+	},
+ 
+	// -------------------------------------------------------------------------
 	// (Private) Various fixes that Firefox doesn't have:
 	// -------------------------------------------------------------------------
 
@@ -234,7 +266,8 @@ const line = _class( {
 	 * otherwise this could be removed!
 	 */
 	fixNavBarDrag() {
-		this.window.windowDraggingElement = new WindowDraggingElement( this.navBar );
+		const set = elem => this.window.windowDraggingElement = elem;
+		unloader( set, elem => set( null ), new WindowDraggingElement( this.navBar ) );
 	},
 
 	/**

@@ -77,7 +77,7 @@
 	{
 		"name": "extraDragButton",
 		"title": "Extra drag button?",
-		"description": "Whether or not to show an extra drag button if you're having trouble dragging the window.",
+		"description": "Whether or not to show an extra drag button. Use if you're having trouble dragging the window.",
 		"type": "bool",
 		"value": false
 	}]

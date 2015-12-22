@@ -2,7 +2,7 @@
 	"main": "src/main.js",
 	"title": "Line",
 	"name": "firefox-line",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"description": "Fork of Mozilla Labs Prospector Oneliner 2",
 	"keywords": ["firefox", "addon", "line", "oneliner", "chrome", "modification"],
 	"homepage": "http://centril.github.io/firefox-line",

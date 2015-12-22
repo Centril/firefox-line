@@ -24,10 +24,10 @@ const { setupSearchButton }		= require( './search-engine' );
 const {	sdks, requireJSM, unloadable,
 		noop, isNone, exec, each,
 		CUI, cuiDo, widgetMove, widgetMovable,
-		watchWindowsAsync, change, on, once, onMulti,
+		watchFeature, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
 		nsXUL, insertAfter, byId, setAttr,
-		attrs, appendChildren }	= require('./utils');
+		attrs, appendChildren, WindowFeature }	= require('./utils');
 const [ {Class: _class}, sp, {Style}, {modelFor}, {when: unloader}, {partial, delay},
 		{remove}, {isNull, isUndefined, isString}, {attachTo, detachFrom}] = sdks(
 	  [	'core/heritage', 'simple-prefs', 'stylesheet/style', 'model/core',
@@ -65,30 +65,26 @@ const isFocus = evt => evt.type === 'focus';
  * @param  {ChromeWindow}   window   The window to make line for.
  * @return {line}                    Our line object.
  */
-const line = _class( {
+const line = WindowFeature.extend( {
 	// -------------------------------------------------------------------------
 	// Public API:
 	// -------------------------------------------------------------------------
 
 	/**
 	 * Constructor:
-	 *
-	 * @param  {ChromeWindow} window The Window.
 	 */
 	initialize( window ) {
-		this.window = window;
-		this.windowModel = modelFor( this.window );
+		WindowFeature.prototype.initialize.call( this, window );
 
-		this.id = byId( this.window );
+		this.windowModel = modelFor( this.window );
 
 		this.tabWidgets = CUI.getWidgetsInArea( CUI.AREA_TABSTRIP );
 
-		this.urlbar = window.gURLBar;
-		this.browser = window.gBrowser;
-		this.doc = window.document;
+		this.urlbar = this.window.gURLBar;
+		this.browser = this.window.gBrowser;
 
 		// Get aliases to various elements:
-		each( ID, (k, v) => isString( v ) && (this[k] = this.id( v )) );
+		this.useElements( ID );
 
 		// Rememeber flex value of urlContainer:
 		this.oldFlex = this.urlContainer.getAttribute( 'flex' );
@@ -97,9 +93,9 @@ const line = _class( {
 	/**
 	 * Applies line modifications for window.
 	 */
-	make() {
+	apply() {
 		// Apply line.css:
-		const style = this.attach( new Style( { uri: './line.css' } ) );
+		const style = this.style( './line.css' );
 
 		// Remove search bar from navBar:
 		CUI.removeWidgetFromArea( ID.search );
@@ -175,26 +171,6 @@ const line = _class( {
 			this.modeFlexible();
 		} );
 	},
-
-	// -------------------------------------------------------------------------
-	// (Private) Modifications helpers:
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Attaches a modification to our window.
-	 *
-	 * @param  {*} mod  The modification to attach.
-	 * @return {*}      The argument mod.
-	 */
-	attach( mod ) { attachTo( mod, this.window ); return mod; },
-
-	/**
-	 * Detaches a modification from our window.
-	 *
-	 * @param  {*} mod  The modification to detach.
-	 * @return {null}   Null.
-	 */
-	detach( mod ) { detachFrom( mod, this.window ); return null; },
 
 	// -------------------------------------------------------------------------
 	// (Private) Listener helpers:
@@ -608,7 +584,7 @@ const line = _class( {
 tabsStartListener();
 
 // Line:ify each window as they come:
-watchWindowsAsync( window => line( window ).make() );
+watchFeature( line );
 
 // Setup Search Button:
 delay( setupSearchButton );

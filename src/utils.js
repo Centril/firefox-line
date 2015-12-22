@@ -42,11 +42,13 @@ exports.requireJSM = requireJSM;
 const { CustomizableUI: CUI } = requireJSM( '/modules/CustomizableUI' );
 exports.CUI = CUI;
 
-const [	events, window_utils, {browserWindows: windows},
+const [ events, window_utils, {browserWindows: windows},
 		{viewFor}, {when: unloader}, {partial, curry, delay},
-		{isNull, isUndefined, isFunction, isArray}] = sdks(
+		{Class: _class, mix}, {attachTo, detachFrom}, {Style},
+		{isNull, isUndefined, isFunction, isArray, isString}] = sdks(
 	  [ 'dom/events', 'window/utils', 'windows',
 	    'view/core', 'system/unload', 'lang/functional',
+	    'core/heritage', 'content/mod', 'stylesheet/style',
 	    'lang/type'] );
 
 // -------------------------------------------------------------------------
@@ -394,3 +396,72 @@ const widgetMove = (id, relId, relMove = 1 ) =>
 	CUI.moveWidgetWithinArea( id, Math.max( 0,
 		CUI.getPlacementOfWidget( relId ).position + relMove ) );
 exports.widgetMove = widgetMove;
+
+// -------------------------------------------------------------------------
+// WindowFeature:
+// -------------------------------------------------------------------------
+
+/**
+ * WindowFeature, a helper for a per window addon feature:
+ */
+const WindowFeature = _class( {
+	/**
+	 * Constructor:
+	 *
+	 * @param  {ChromeWindow} window The Window.
+	 */
+	initialize( window ) {
+		this.window = window;
+		this.doc = window.document;
+		this.id = byId( this.window );
+	},
+
+	/**
+	 * Imports all IDs { <JS-key>: <DOM-id> } in ID to this.
+	 * All values in ID not being strings are ignored.
+	 *
+	 * @param  {*} ID the IDs to fetch.
+	 */
+	useElements( ID ) {
+		// Get aliases to various elements:
+		each( ID, (k, v) => isString( v ) && (this[k] = this.id( v )) );
+	},
+
+	/**
+	 * Applies the style given by uri.
+	 *
+	 * @param  {String} uri the URI of the style CSS file.
+	 * @return {Style}      the style attachment, to unload later.
+	 */
+	style( uri ) {
+		return this.attach( new Style( { uri: uri } ) );
+	},
+
+	/**
+	 * Attaches a modification to our window.
+	 *
+	 * @param  {*} mod  The modification to attach.
+	 * @return {*}      The argument mod.
+	 */
+	attach( mod ) { attachTo( mod, this.window ); return mod; },
+
+	/**
+	 * Detaches a modification from our window.
+	 *
+	 * @param  {*} mod  The modification to detach.
+	 * @return {null}   Null.
+	 */
+	detach( mod ) { detachFrom( mod, this.window ); return null; },
+} );
+
+WindowFeature.extend = proto => _class( mix( proto, { extends: WindowFeature } ) );
+
+exports.WindowFeature = WindowFeature;
+
+/**
+ * Watch a WindowFeature, applying it async as windows come.
+ *
+ * @param  {WindowFeature} f The WindowFeature, expecting a function apply on prototype.
+ */
+const watchFeature = f => watchWindowsAsync( window => f( window ).apply() );
+exports.watchFeature = watchFeature;

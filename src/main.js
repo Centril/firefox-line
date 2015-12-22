@@ -24,14 +24,13 @@ const { setupSearchButton }		= require( './search-engine' );
 const {	sdks, requireJSM, unloadable,
 		noop, isNone, exec, each,
 		CUI, cuiDo, widgetMove, widgetMovable,
-		watchFeature, change, on, once, onMulti,
+		change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
-		nsXUL, insertAfter, byId, setAttr,
-		attrs, appendChildren, WindowFeature }	= require('./utils');
-const [ {Class: _class}, sp, {Style}, {modelFor}, {when: unloader}, {partial, delay},
-		{remove}, {isNull, isUndefined, isString}, {attachTo, detachFrom}] = sdks(
-	  [	'core/heritage', 'simple-prefs', 'stylesheet/style', 'model/core',
-	  	'system/unload', 'lang/functional', 'util/array', 'lang/type', 'content/mod' ] );
+		nsXUL, insertAfter, attrs, appendChildren,
+		watchFeature, WindowFeature }	= require('./utils');
+const [ sp, {Style}, {modelFor}, {when: unloader}, {partial, delay}] = sdks(
+	  [	'simple-prefs', 'stylesheet/style', 'model/core',
+	  	'system/unload', 'lang/functional' ] );
 
 const { WindowDraggingElement } = requireJSM( 'gre/modules/WindowDraggingUtils' );
 

@@ -34,6 +34,8 @@ Here are some screenshots from the addon:
 + **Customizable width** of url-bar for when focused and when not focused.
 + **Customizable min/max-width** of tabs.
 + **Customizable: Identity label can retract/slide-back** when `url-bar` is `focused` and then return to normal when it is not. This provides more space to write the URL. An icon is still left so that you can see if it is a secure connection or not. You can disable this feature if you like.
++ Opt-in **Drag button** for users that find it difficult to drag the window due to
+the small spaces that are left, when many tabs are open, for dragging the window.
 
 ## Fixes
 

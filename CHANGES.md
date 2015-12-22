@@ -14,3 +14,18 @@
 + **Fixed:** graphical titlebar buttons overflow bugs.
 + **Fixed:** addon handles overflow correctly.
 + **Fixed:** inability to remove/move the added search button.
+
+## 2.0.0
+
++ **Feature:** Opt-in **Drag button** for users that find it difficult to drag the window due to
+the small spaces that are left, when many tabs are open, for dragging the window.
++ **Fixed:** Tab controls ordering & remembering start of tab controls, require('chrome') removed, search-engine.js doesn't depend on windows.
++ **Fixed:** #1, When visiting a site which provides an OpenSearch engine with a long title/name, it has graphical bugs as described in issue title.
++ **Fixed:**  Adding engines - now uses correct engine. 
++ **Fixed:** #2, Sometimes a the overflow button is left in AREA_NAVBAR even tho there is no overflow and the associated panel shows up empty.
++ **Fixed:** #3, Sometimes security/Identity label is retracted even tho it isn't supposed to be when urlbar doesn't have focus.
++ **Fixed:** #4, Security/Identity label is cropped when unretracted, i.e: when urlbar doesn't have focus (is blurred).
++ **Fixed:** #5, Pinned tabs, when many, causes whole tabs widget to go overflow when not fullscreen.
++ **Fixed:** Titlebar buttons have proper padding now.
++ **Fixed:** #6, FF45, png images replaced with svg.
++ **Fixed:** #7, FF45, sliding mode doesn't work due to #urlbar.focused.

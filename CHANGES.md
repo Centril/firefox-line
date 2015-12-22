@@ -15,7 +15,7 @@
 + **Fixed:** addon handles overflow correctly.
 + **Fixed:** inability to remove/move the added search button.
 
-## 2.0.0
+## 2.0.1
 
 + **Feature:** Opt-in **Drag button** for users that find it difficult to drag the window due to
 the small spaces that are left, when many tabs are open, for dragging the window.

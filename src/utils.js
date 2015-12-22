@@ -42,10 +42,12 @@ exports.requireJSM = requireJSM;
 const { CustomizableUI: CUI } = requireJSM( '/modules/CustomizableUI' );
 exports.CUI = CUI;
 
-const [	events, window_utils, {browserWindows: windows}, {viewFor}, {when: unloader},
-		{partial, curry}, {isNull, isUndefined, isFunction, isArray}] = sdks(
-	  [ 'dom/events', 'window/utils', 'windows', 'view/core', 'system/unload',
-		'lang/functional', 'lang/type'] );
+const [	events, window_utils, {browserWindows: windows},
+		{viewFor}, {when: unloader}, {partial, curry, delay},
+		{isNull, isUndefined, isFunction, isArray}] = sdks(
+	  [ 'dom/events', 'window/utils', 'windows',
+	    'view/core', 'system/unload', 'lang/functional',
+	    'lang/type'] );
 
 // -------------------------------------------------------------------------
 // General purpose functions:
@@ -151,6 +153,16 @@ const watchWindows = callback => {
 		w => callback( viewFor( w ) ) );
 }
 exports.watchWindows = watchWindows;
+
+/**
+ * Asynchronously apply a callback to each open and new browser windows.
+ *
+ * @usage watchWindowsAsync( callback ): Apply a callback to each browser window.
+ * @param {function} callback: 1-parameter function that gets a browser window.
+ */
+const watchWindowsAsync = callback =>
+	watchWindows( window => delay( () => callback( window ), 0 ) );
+exports.watchWindowsAsync = watchWindowsAsync;
 
 // -------------------------------------------------------------------------
 // Listeners:

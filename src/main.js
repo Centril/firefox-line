@@ -24,7 +24,7 @@ const { setupSearchButton }		= require( './search-engine' );
 const {	sdks, requireJSM, unloadable,
 		noop, isNone, exec, each,
 		CUI, cuiDo, widgetMove, widgetMovable,
-		watchWindows, change, on, once, onMulti,
+		watchWindowsAsync, change, on, once, onMulti,
 		px, boundingWidth, boundingWidthPx, setWidth, realWidth,
 		nsXUL, insertAfter, byId, setAttr,
 		attrs, appendChildren }	= require('./utils');
@@ -608,7 +608,7 @@ const line = _class( {
 tabsStartListener();
 
 // Line:ify each window as they come:
-watchWindows( window => delay( () => line( window ).make(), 0 ) );
+watchWindowsAsync( window => line( window ).make() );
 
 // Setup Search Button:
 delay( setupSearchButton );
